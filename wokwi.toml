@@ -1,0 +1,18 @@
+# Wokwi configuration for ESP32 simulation
+# Use with: https://wokwi.com or VS Code Wokwi extension
+
+[wokwi]
+version = 1
+firmware = ".pio/build/m5stack-core-esp32/firmware.elf"
+
+# Note: This is a basic config - Wokwi can simulate:
+# - WiFi networks
+# - UART/Serial communication  
+# - GPIO pins
+# - Basic timing
+#
+# Limitations:
+# - Watchdog behavior may differ
+# - Pin conflicts might not be detected
+# - Real-time timing won't match hardware exactly
+

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenWatt P1 Reader</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      opacity: 0.9;
+    }
+
+    nav {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    nav a {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      margin-right: 1rem;
+      text-decoration: none;
+      color: #667eea;
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+
+    nav a:hover,
+    nav a.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      margin-bottom: 1rem;
+      color: #667eea;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .status-item {
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .status-item strong {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #666;
+    }
+
+    .status-item .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .status-badge.connected {
+      background: #10b981;
+      color: white;
+    }
+
+    .status-badge.disconnected {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: background 0.3s;
+    }
+
+    .btn:hover {
+      background: #5568d3;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .meter-data {
+      font-family: 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .meter-data .label {
+      color: #9cdcfe;
+    }
+
+    .meter-data .value {
+      color: #4ec9b0;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 1rem;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>🔋 OpenWatt P1 Reader</h1>
+      <div class="subtitle" id="deviceInfo">Loading...</div>
+    </header>
+
+    <nav>
+      <a href="/" class="active">Dashboard</a>
+      <a href="/live">Live Data</a>
+      <a href="/settings">Settings</a>
+      <a href="/system">System</a>
+    </nav>
+
+    <div id="content">
+      <div class="card">
+        <h2>Connection Status</h2>
+        <div class="status-grid" id="statusGrid">
+          <div class="status-item">
+            <strong>WiFi</strong>
+            <div class="value"><span class="status-badge disconnected" id="wifiStatus">Disconnected</span></div>
+          </div>
+          <div class="status-item">
+            <strong>Meter</strong>
+            <div class="value"><span class="status-badge disconnected" id="meterStatus">Disconnected</span></div>
+          </div>
+          <div class="status-item">
+            <strong>MQTT</strong>
+            <div class="value"><span class="status-badge disconnected" id="mqttStatus">Disconnected</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Latest Meter Reading</h2>
+        <div id="latestReading" class="loading">Waiting for meter data...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load device info
+    fetch('/api/system')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('deviceInfo').textContent =
+          `${data.firmware_version} | Device: ${data.device_id}`;
+      });
+
+    // Load status
+    function updateStatus() {
+      fetch('/api/state')
+        .then(r => r.json())
+        .then(data => {
+          const wifiEl = document.getElementById('wifiStatus');
+          const meterEl = document.getElementById('meterStatus');
+          const mqttEl = document.getElementById('mqttStatus');
+
+          wifiEl.textContent = data.wifi_connected ? 'Connected' : 'Disconnected';
+          wifiEl.className = 'status-badge ' + (data.wifi_connected ? 'connected' : 'disconnected');
+
+          meterEl.textContent = data.meter_connected ? 'Connected' : 'Disconnected';
+          meterEl.className = 'status-badge ' + (data.meter_connected ? 'connected' : 'disconnected');
+
+          mqttEl.textContent = data.cloud_connected ? 'Connected' : 'Disconnected';
+          mqttEl.className = 'status-badge ' + (data.cloud_connected ? 'connected' : 'disconnected');
+        });
+    }
+
+    // Load config to show latest reading
+    function updateLatestReading() {
+      fetch('/api/config')
+        .then(r => r.json())
+        .then(data => {
+          // This will be updated via WebSocket in live view
+        });
+    }
+
+    updateStatus();
+    setInterval(updateStatus, 5000);
+  </script>
+</body>
+
+</html>
