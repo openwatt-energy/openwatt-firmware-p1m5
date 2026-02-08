@@ -108,25 +108,51 @@ WiFiConfig WiFiManager::loadCredentials(Preferences& prefs) {
     if (nvs_open("wifi-settings", NVS_READONLY, &h) == ESP_OK) {
       size_t len = 0;
       
-      // Try to get ssid as string
-      if (nvs_get_str(h, "ssid", NULL, &len) == ESP_OK && len > 0) {
+      // Try "wifi_ssid" key first (prefixed format)
+      if (nvs_get_str(h, "wifi_ssid", NULL, &len) == ESP_OK && len > 0) {
         char* buf = (char*)malloc(len);
-        if (buf && nvs_get_str(h, "ssid", buf, &len) == ESP_OK) {
+        if (buf && nvs_get_str(h, "wifi_ssid", buf, &len) == ESP_OK) {
           config.ssid = String(buf);
-          SerialConsole::println("WiFi: Recovered SSID from Xenn format");
+          SerialConsole::println("WiFi: Recovered SSID from Xenn format (wifi_ssid)");
         }
         if (buf) free(buf);
       }
       
-      // Try to get password as string
+      // Fallback to "ssid" key (simple format)
+      if (config.ssid.length() == 0) {
+        len = 0;
+        if (nvs_get_str(h, "ssid", NULL, &len) == ESP_OK && len > 0) {
+          char* buf = (char*)malloc(len);
+          if (buf && nvs_get_str(h, "ssid", buf, &len) == ESP_OK) {
+            config.ssid = String(buf);
+            SerialConsole::println("WiFi: Recovered SSID from Xenn format (ssid)");
+          }
+          if (buf) free(buf);
+        }
+      }
+      
+      // Try "wifi_password" key first (prefixed format)
       len = 0;
-      if (nvs_get_str(h, "password", NULL, &len) == ESP_OK && len > 0) {
+      if (nvs_get_str(h, "wifi_password", NULL, &len) == ESP_OK && len > 0) {
         char* buf = (char*)malloc(len);
-        if (buf && nvs_get_str(h, "password", buf, &len) == ESP_OK) {
+        if (buf && nvs_get_str(h, "wifi_password", buf, &len) == ESP_OK) {
           config.password = String(buf);
-          SerialConsole::println("WiFi: Recovered password from Xenn format");
+          SerialConsole::println("WiFi: Recovered password from Xenn format (wifi_password)");
         }
         if (buf) free(buf);
+      }
+      
+      // Fallback to "password" key (simple format)
+      if (config.password.length() == 0) {
+        len = 0;
+        if (nvs_get_str(h, "password", NULL, &len) == ESP_OK && len > 0) {
+          char* buf = (char*)malloc(len);
+          if (buf && nvs_get_str(h, "password", buf, &len) == ESP_OK) {
+            config.password = String(buf);
+            SerialConsole::println("WiFi: Recovered password from Xenn format (password)");
+          }
+          if (buf) free(buf);
+        }
       }
       
       nvs_close(h);
