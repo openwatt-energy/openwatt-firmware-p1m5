@@ -46,6 +46,7 @@ OTAInfo OTAClient::checkForUpdate(const String& deviceSerial, const String& curr
   HTTPClient http;
   http.begin(firmwareURL);
   http.setTimeout(OTA_TIMEOUT_MS);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);  // Follow 301/302/307 redirects
   
   setUpdateHeaders(http, deviceSerial, currentVersion, macAddress);
   
@@ -88,6 +89,7 @@ bool OTAClient::downloadAndApply(const String& deviceSerial, const String& curre
   HTTPClient http;
   http.begin(firmwareURL);
   http.setTimeout(OTA_TIMEOUT_MS);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);  // Follow 301/302/307 redirects
   
   setUpdateHeaders(http, deviceSerial, currentVersion, macAddress);
   
@@ -206,6 +208,7 @@ bool OTAClient::downloadAndApplyFromURL(const String& url) {
   HTTPClient http;
   http.begin(url);
   http.setTimeout(OTA_TIMEOUT_MS);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);  // Follow 301/302/307 redirects
 
   LOG_INFO(MODULE_OTA, "Downloading from %s", url.c_str());
 
