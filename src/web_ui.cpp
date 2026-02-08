@@ -1,12 +1,17 @@
 #include "web_ui.h"
 
 String getWebPage(const String& path) {
-  String logo = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 40\" class=\"h-8 w-auto\"><path fill=\"currentColor\" d=\"M20 8c-6.6 0-12 5.4-12 12s5.4 12 12 12 12-5.4 12-12S26.6 8 20 8zm0 20c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z\"/><circle cx=\"20\" cy=\"20\" r=\"4\" fill=\"currentColor\"/></svg>";
+  // OpenWatt Logo - Embedded SVG (works offline)
+  String logo = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 48\" class=\"h-10 w-10\">";
+  logo += "<defs><linearGradient id=\"owGrad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" style=\"stop-color:#3b82f6;stop-opacity:1\" /><stop offset=\"100%\" style=\"stop-color:#1d4ed8;stop-opacity:1\" /></linearGradient></defs>";
+  logo += "<circle cx=\"24\" cy=\"24\" r=\"22\" fill=\"url(#owGrad)\" />";
+  logo += "<path fill=\"white\" d=\"M28 12l-12 16h8l-4 16 16-20h-8l4-12z\" />";
+  logo += "</svg>";
   
   if (path == "/" || path == "/index.html") {
     String html = "<!DOCTYPE html><html lang=en class=scroll-smooth><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
-    html += "<title>OpenWatt P1 Reader</title>";
+    html += "<title>OpenWatt P1 Reader - Dashboard</title>";
     html += "<script src=https://cdn.tailwindcss.com></script>";
     html += "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap\" rel=stylesheet>";
     html += "<style>body{font-family:Inter,system-ui,sans-serif}</style>";
@@ -14,17 +19,17 @@ String getWebPage(const String& path) {
     html += "</head><body class=bg-gray-50 text-gray-900 min-h-screen>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
-    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div><span class=\"font-semibold text-lg hidden sm:block\">OpenWatt</span></div>";
+    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div></div>";
     html += "<div class=\"flex items-center gap-1\">";
     html += "<a href=/ class=\"px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700\">Dashboard</a>";
-    html += "<a href=/live class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Live</a>";
     html += "<a href=/settings class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Settings</a>";
     html += "<a href=/system class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">System</a>";
     html += "</div></div></div></nav>";
     html += "<main class=\"max-w-7xl mx-auto px-4 py-6\">";
     html += "<div class=mb-6><h1 class=\"text-2xl font-bold text-gray-900\">Dashboard</h1>";
     html += "<p class=\"mt-1 text-sm text-gray-500\" id=deviceInfo>Loading...</p></div>";
-    html += "<div class=\"grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6\">";
+    // Connection Status Cards with WebSocket
+    html += "<div class=\"grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6\">";
     html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-5\">";
     html += "<div class=\"flex items-center gap-3\"><div class=\"w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center\">";
     html += "<svg class=\"w-5 h-5 text-emerald-600\" fill=none stroke=currentColor viewBox=\"0 0 24 24\"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d=\"M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0\"/></svg>";
@@ -42,14 +47,115 @@ String getWebPage(const String& path) {
     html += "<svg class=\"w-5 h-5 text-purple-600\" fill=none stroke=currentColor viewBox=\"0 0 24 24\"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d=\"M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z\"/></svg>";
     html += "</div><div><p class=\"text-sm font-medium text-gray-600\">MQTT</p>";
     html += "<span id=mqttStatus class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800\">Disconnected</span>";
+    html += "</div></div></div>";
+    html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-5\">";
+    html += "<div class=\"flex items-center gap-3\"><div class=\"w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center\">";
+    html += "<svg class=\"w-5 h-5 text-orange-600\" fill=none stroke=currentColor viewBox=\"0 0 24 24\"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d=\"M13 10V3L4 14h7v7l9-11h-7z\"/></svg>";
+    html += "</div><div><p class=\"text-sm font-medium text-gray-600\">WebSocket</p>";
+    html += "<span id=wsStatusBadge class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800\">Disconnected</span>";
     html += "</div></div></div></div>";
-    html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">";
-    html += "<h2 class=\"text-lg font-semibold text-gray-900 mb-4\">Latest Meter Reading</h2>";
-    html += "<div id=latestReading class=\"text-gray-500 text-center py-8\">Waiting for meter data...</div>";
+    // Quick Stats
+    html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">";
+    html += "<h2 class=\"text-lg font-semibold text-gray-900 mb-4\">Quick Stats</h2>";
+    html += "<div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4\">";
+    html += "<div class=\"bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200\">";
+    html += "<p class=\"text-sm font-medium text-blue-600 mb-1\">Power Import</p>";
+    html += "<p class=\"text-2xl font-bold text-blue-900\" id=powerImport>--</p><p class=\"text-xs text-blue-600\">kW</p></div>";
+    html += "<div class=\"bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200\">";
+    html += "<p class=\"text-sm font-medium text-green-600 mb-1\">Power Export</p>";
+    html += "<p class=\"text-2xl font-bold text-green-900\" id=powerExport>--</p><p class=\"text-xs text-green-600\">kW</p></div>";
+    html += "<div class=\"bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200\">";
+    html += "<p class=\"text-sm font-medium text-purple-600 mb-1\">Total Consumed</p>";
+    html += "<p class=\"text-2xl font-bold text-purple-900\" id=totalCons>--</p><p class=\"text-xs text-purple-600\">kWh</p></div>";
+    html += "<div class=\"bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200\">";
+    html += "<p class=\"text-sm font-medium text-orange-600 mb-1\">Total Produced</p>";
+    html += "<p class=\"text-2xl font-bold text-orange-900\" id=totalProd>--</p><p class=\"text-xs text-orange-600\">kWh</p></div>";
+    html += "</div></div>";
+    // Real-time Meter Data via WebSocket
+    html += "<div class=\"bg-gray-900 rounded-xl shadow-lg overflow-hidden\">";
+    html += "<div class=\"p-4 border-b border-gray-800 flex items-center justify-between\">";
+    html += "<h2 class=\"text-white font-semibold\">Real-time Meter Data</h2>";
+    html += "<div class=\"flex items-center gap-2\">";
+    html += "<span id=wsIndicator class=\"w-2.5 h-2.5 rounded-full bg-red-500\"></span>";
+    html += "<span id=wsStatus class=\"text-sm text-gray-400\">Disconnected</span>";
+    html += "</div></div>";
+    html += "<div id=meterData class=\"p-4 font-mono text-sm space-y-1\"><div class=text-gray-500>Connecting to WebSocket...</div></div>";
+    html += "</div>";
+    // API Links Section
+    html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6\">";
+    html += "<h2 class=\"text-lg font-semibold text-gray-900 mb-4\">API Endpoints</h2>";
+    html += "<div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3\">";
+    html += "<a href=/api/system class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/system</span></a>";
+    html += "<a href=/api/state class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/state</span></a>";
+    html += "<a href=/api/config class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/config</span></a>";
+    html += "<a href=/api/meter class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/meter</span></a>";
+    html += "<a href=/api/meter/raw class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/meter/raw</span></a>";
+    html += "<a href=/api/v1/data class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/v1/data</span></a>";
+    html += "<a href=/api/config/wifiscan class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/config/wifiscan</span></a>";
+    html += "<a href=/api/debug/p1 class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/debug/p1</span></a>";
+    html += "<a href=/api/debug/nvs class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/debug/nvs</span></a>";
+    html += "<a href=/api/knock class=\"flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition\"><span class=\"text-blue-600 font-mono text-sm\">GET</span><span class=\"ml-2 text-gray-700 text-sm\">/api/knock</span></a>";
+    html += "</div></div>";
     html += "</div></main>";
-    html += "<script>fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('deviceInfo').textContent=d.firmware_version+' | '+d.device_id;});";
-    html += "function updateStatus(){fetch('/api/state').then(r=>r.json()).then(data=>{const set=(id,ok)=>{const el=document.getElementById(id);el.textContent=ok?'Connected':'Disconnected';el.className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium '+(ok?'bg-emerald-100 text-emerald-800':'bg-red-100 text-red-800');};set('wifiStatus',data.wifi_connected);set('meterStatus',data.meter_connected);set('mqttStatus',data.cloud_connected);});}updateStatus();setInterval(updateStatus,5000);</script>";
-    html += "</body></html>";
+    // JavaScript
+    html += "<script>";
+    html += "fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('deviceInfo').textContent=d.firmware_version+' | '+d.device_id;});";
+    html += "function updateStatus(){fetch('/api/state').then(r=>r.json()).then(data=>{const set=(id,ok)=>{const el=document.getElementById(id);el.textContent=ok?'Connected':'Disconnected';el.className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium '+(ok?'bg-emerald-100 text-emerald-800':'bg-red-100 text-red-800');};set('wifiStatus',data.wifi_connected);set('meterStatus',data.meter_connected);set('mqttStatus',data.cloud_connected);});}updateStatus();setInterval(updateStatus,5000);";
+    html += "let ws=null;let reconnectTimeout=null;";
+    html += "function hexToAscii(hex){if(!hex||hex==='N/A')return'N/A';let result='';for(let i=0;i<hex.length;i+=2){const byte=parseInt(hex.substr(i,2),16);if(byte>=32&&byte<127)result+=String.fromCharCode(byte);}return result||hex;}";
+    html += "function connect(){const url=(window.location.protocol==='https:'?'wss:':'ws:')+'//'+window.location.host+'/api/live';ws=new WebSocket(url);";
+    html += "ws.onopen=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-emerald-500';document.getElementById('wsStatus').textContent='Connected';document.getElementById('wsStatusBadge').textContent='Connected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800';};";
+    html += "ws.onmessage=(e)=>{";
+    html += "const data=JSON.parse(e.data);";
+    html += "const meterId=hexToAscii(data['0-0:96.1.1']||'');";
+    html += "const importKw=(data['1-0:1.7.0']||0);";
+    html += "const exportKw=(data['1-0:2.7.0']||0);";
+    html += "const cons1=(data['1-0:1.8.1']||0);";
+    html += "const cons2=(data['1-0:1.8.2']||0);";
+    html += "const prod1=(data['1-0:2.8.1']||0);";
+    html += "const prod2=(data['1-0:2.8.2']||0);";
+    html += "document.getElementById('powerImport').textContent=importKw.toFixed(3);";
+    html += "document.getElementById('powerExport').textContent=exportKw.toFixed(3);";
+    html += "document.getElementById('totalCons').textContent=(cons1+cons2).toFixed(1);";
+    html += "document.getElementById('totalProd').textContent=(prod1+prod2).toFixed(1);";
+    html += "let meterHtml='<div class=space-y-4>';";
+    html += "meterHtml+='<div class=\"border-b border-gray-700 pb-3\"><h3 class=\"text-orange-400 font-semibold mb-2\">Identification</h3>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Meter ID (ASCII)</span><span class=text-emerald-400>'+meterId+'</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Equipment ID (Hex)</span><span class=text-blue-400>'+(data['0-0:96.1.1']||'N/A')+'</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Meter Model</span><span class=text-purple-400>'+(data['0-0:96.1.4']||'N/A')+'</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Timestamp</span><span class=text-yellow-400>'+(data['0-0:1.0.0']||'N/A')+'</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Tariff</span><span class=text-pink-400>'+(data['0-0:96.14.0']||'N/A')+'</span></div>';";
+    html += "meterHtml+='</div>';";
+    html += "meterHtml+='<div class=\"border-b border-gray-700 pb-3\"><h3 class=\"text-orange-400 font-semibold mb-2\">Power (kW)</h3>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Total Import</span><span class=text-yellow-400>'+importKw.toFixed(3)+' kW</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Total Export</span><span class=text-green-400>'+exportKw.toFixed(3)+' kW</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L1 Import</span><span class=text-blue-400>'+((data['1-0:21.7.0']||0)).toFixed(3)+' kW</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L2 Import</span><span class=text-blue-400>'+((data['1-0:41.7.0']||0)).toFixed(3)+' kW</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L3 Import</span><span class=text-blue-400>'+((data['1-0:61.7.0']||0)).toFixed(3)+' kW</span></div>';";
+    html += "meterHtml+='</div>';";
+    html += "meterHtml+='<div class=\"border-b border-gray-700 pb-3\"><h3 class=\"text-orange-400 font-semibold mb-2\">Energy (kWh)</h3>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Consumption T1</span><span class=text-purple-400>'+cons1.toFixed(3)+' kWh</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Consumption T2</span><span class=text-pink-400>'+cons2.toFixed(3)+' kWh</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Production T1</span><span class=text-cyan-400>'+prod1.toFixed(3)+' kWh</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>Production T2</span><span class=text-teal-400>'+prod2.toFixed(3)+' kWh</span></div>';";
+    html += "meterHtml+='</div>';";
+    html += "meterHtml+='<div class=\"border-b border-gray-700 pb-3\"><h3 class=\"text-orange-400 font-semibold mb-2\">Voltage (V)</h3>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L1</span><span class=text-red-400>'+((data['1-0:32.7.0']||0)).toFixed(1)+' V</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L2</span><span class=text-red-400>'+((data['1-0:52.7.0']||0)).toFixed(1)+' V</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L3</span><span class=text-red-400>'+((data['1-0:72.7.0']||0)).toFixed(1)+' V</span></div>';";
+    html += "meterHtml+='</div>';";
+    html += "meterHtml+='<div><h3 class=\"text-orange-400 font-semibold mb-2\">Current (A)</h3>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L1</span><span class=text-amber-400>'+((data['1-0:31.7.0']||0)).toFixed(2)+' A</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L2</span><span class=text-amber-400>'+((data['1-0:51.7.0']||0)).toFixed(2)+' A</span></div>';";
+    html += "meterHtml+='<div class=\"flex justify-between text-gray-400 py-1\"><span>L3</span><span class=text-amber-400>'+((data['1-0:71.7.0']||0)).toFixed(2)+' A</span></div>';";
+    html += "meterHtml+='</div>';";
+    html += "meterHtml+='</div>';";
+    html += "document.getElementById('meterData').innerHTML=meterHtml;";
+    html += "};";
+    html += "ws.onclose=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-red-500';document.getElementById('wsStatus').textContent='Disconnected';document.getElementById('wsStatusBadge').textContent='Disconnected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';reconnectTimeout=setTimeout(connect,3000);};";
+    html += "};connect();";
+    html += "window.addEventListener('beforeunload',()=>{if(ws)ws.close();if(reconnectTimeout)clearTimeout(reconnectTimeout);});";
+    html += "</script></body></html>";
     return html;
   }
   
@@ -63,7 +169,7 @@ String getWebPage(const String& path) {
     html += "</head><body class=bg-gray-50 text-gray-900 min-h-screen>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
-    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div><span class=\"font-semibold text-lg hidden sm:block\">OpenWatt</span></div>";
+    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div></div>";
     html += "<div class=\"flex items-center gap-1\">";
     html += "<a href=/ class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Dashboard</a>";
     html += "<a href=/live class=\"px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700\">Live</a>";
@@ -107,7 +213,7 @@ String getWebPage(const String& path) {
     html += "</head><body class=bg-gray-50 text-gray-900 min-h-screen>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
-    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div><span class=\"font-semibold text-lg hidden sm:block\">OpenWatt</span></div>";
+    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div></div>";
     html += "<div class=\"flex items-center gap-1\">";
     html += "<a href=/ class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Dashboard</a>";
     html += "<a href=/live class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Live</a>";
@@ -159,7 +265,7 @@ String getWebPage(const String& path) {
     html += "</head><body class=bg-gray-50 text-gray-900 min-h-screen>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
-    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div><span class=\"font-semibold text-lg hidden sm:block\">OpenWatt</span></div>";
+    html += "<div class=\"flex items-center gap-3\"><div class=text-blue-600>" + logo + "</div></div>";
     html += "<div class=\"flex items-center gap-1\">";
     html += "<a href=/ class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Dashboard</a>";
     html += "<a href=/live class=\"px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50\">Live</a>";

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenWatt P1 Reader</title>
+  <title>OpenWatt P1 Reader - Dashboard</title>
   <style>
     * {
       margin: 0;
@@ -20,7 +20,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -78,6 +78,9 @@
     .card h2 {
       margin-bottom: 1rem;
       color: #667eea;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .status-grid {
@@ -98,10 +101,11 @@
       display: block;
       margin-bottom: 0.5rem;
       color: #666;
+      font-size: 0.875rem;
     }
 
     .status-item .value {
-      font-size: 1.5rem;
+      font-size: 1.25rem;
       font-weight: bold;
       color: #333;
     }
@@ -124,72 +128,60 @@
       color: white;
     }
 
-    .btn {
+    .status-indicator {
       display: inline-block;
-      padding: 0.75rem 1.5rem;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      text-decoration: none;
-      font-size: 1rem;
-      transition: background 0.3s;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
     }
 
-    .btn:hover {
-      background: #5568d3;
+    .status-indicator.connected {
+      background: #10b981;
     }
 
-    .btn-danger {
+    .status-indicator.disconnected {
       background: #ef4444;
-    }
-
-    .btn-danger:hover {
-      background: #dc2626;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-      color: #555;
-    }
-
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 1rem;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: #667eea;
     }
 
     .meter-data {
       font-family: 'Courier New', monospace;
       background: #1e1e1e;
       color: #d4d4d4;
-      padding: 1rem;
+      padding: 1.5rem;
       border-radius: 8px;
       overflow-x: auto;
     }
 
+    .meter-data .row {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .meter-data .row:hover {
+      background: #2d2d2d;
+    }
+
     .meter-data .label {
       color: #9cdcfe;
+      font-size: 0.9rem;
     }
 
     .meter-data .value {
       color: #4ec9b0;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+
+    .meter-data .section {
+      color: #ce9178;
+      font-weight: bold;
+      font-size: 1rem;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 2px solid #ce9178;
+      padding-bottom: 0.3rem;
     }
 
     .loading {
@@ -205,6 +197,66 @@
       border-radius: 5px;
       margin: 1rem 0;
     }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .data-card {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .data-card .label {
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 0.25rem;
+    }
+
+    .data-card .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .data-card .unit {
+      font-size: 0.875rem;
+      color: #999;
+    }
+
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .phase-card {
+      background: #f0f0f0;
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .phase-card h4 {
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .meter-data .row {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+      }
+      
+      .phase-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -217,14 +269,17 @@
 
     <nav>
       <a href="/" class="active">Dashboard</a>
-      <a href="/live">Live Data</a>
       <a href="/settings">Settings</a>
       <a href="/system">System</a>
     </nav>
 
     <div id="content">
+      <!-- Connection Status -->
       <div class="card">
-        <h2>Connection Status</h2>
+        <h2>
+          <span class="status-indicator disconnected" id="wsStatus"></span>
+          Connection Status
+        </h2>
         <div class="status-grid" id="statusGrid">
           <div class="status-item">
             <strong>WiFi</strong>
@@ -238,17 +293,65 @@
             <strong>MQTT</strong>
             <div class="value"><span class="status-badge disconnected" id="mqttStatus">Disconnected</span></div>
           </div>
+          <div class="status-item">
+            <strong>WebSocket</strong>
+            <div class="value"><span class="status-badge disconnected" id="wsStatusBadge">Disconnected</span></div>
+          </div>
         </div>
       </div>
 
+      <!-- Quick Stats -->
       <div class="card">
-        <h2>Latest Meter Reading</h2>
-        <div id="latestReading" class="loading">Waiting for meter data...</div>
+        <h2>⚡ Quick Stats</h2>
+        <div class="data-grid" id="quickStats">
+          <div class="data-card">
+            <div class="label">Power Consumed</div>
+            <div class="value" id="powerConsumed">--</div>
+            <div class="unit">kW</div>
+          </div>
+          <div class="data-card">
+            <div class="label">Power Produced</div>
+            <div class="value" id="powerProduced">--</div>
+            <div class="unit">kW</div>
+          </div>
+          <div class="data-card">
+            <div class="label">Total Consumption</div>
+            <div class="value" id="totalConsumption">--</div>
+            <div class="unit">kWh</div>
+          </div>
+          <div class="data-card">
+            <div class="label">Total Production</div>
+            <div class="value" id="totalProduction">--</div>
+            <div class="unit">kWh</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Meter Data -->
+      <div class="card">
+        <h2>📊 Detailed Meter Data</h2>
+        <div id="meterData" class="meter-data loading">Connecting to WebSocket...</div>
       </div>
     </div>
   </div>
 
   <script>
+    let ws = null;
+    let reconnectTimeout = null;
+
+    // Helper to convert hex to ASCII
+    function hexToAscii(hexStr) {
+      if (!hexStr || hexStr === 'N/A') return 'N/A';
+      let result = '';
+      for (let i = 0; i < hexStr.length; i += 2) {
+        const byte = parseInt(hexStr.substr(i, 2), 16);
+        if (byte >= 32 && byte < 127) {
+          result += String.fromCharCode(byte);
+        }
+      }
+      return result || hexStr;
+    }
+
     // Load device info
     fetch('/api/system')
       .then(r => r.json())
@@ -257,7 +360,7 @@
           `${data.firmware_version} | Device: ${data.device_id}`;
       });
 
-    // Load status
+    // Load status via polling
     function updateStatus() {
       fetch('/api/state')
         .then(r => r.json())
@@ -277,17 +380,124 @@
         });
     }
 
-    // Load config to show latest reading
-    function updateLatestReading() {
-      fetch('/api/config')
-        .then(r => r.json())
-        .then(data => {
-          // This will be updated via WebSocket in live view
-        });
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/live`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        document.getElementById('wsStatus').className = 'status-indicator connected';
+        document.getElementById('wsStatusBadge').textContent = 'Connected';
+        document.getElementById('wsStatusBadge').className = 'status-badge connected';
+        document.getElementById('meterData').innerHTML = '<div class="loading">Waiting for meter data...</div>';
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          displayMeterData(data);
+          updateQuickStats(data);
+        } catch (e) {
+          console.error('Error parsing WebSocket message:', e);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        document.getElementById('wsStatus').className = 'status-indicator disconnected';
+        document.getElementById('wsStatusBadge').textContent = 'Error';
+        document.getElementById('wsStatusBadge').className = 'status-badge disconnected';
+      };
+
+      ws.onclose = () => {
+        document.getElementById('wsStatus').className = 'status-indicator disconnected';
+        document.getElementById('wsStatusBadge').textContent = 'Disconnected';
+        document.getElementById('wsStatusBadge').className = 'status-badge disconnected';
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
     }
 
+    function updateQuickStats(data) {
+      document.getElementById('powerConsumed').textContent = (data['1-0:1.7.0'] || 0).toFixed(3);
+      document.getElementById('powerProduced').textContent = (data['1-0:2.7.0'] || 0).toFixed(3);
+      
+      const totalCons = (data['1-0:1.8.1'] || 0) + (data['1-0:1.8.2'] || 0);
+      const totalProd = (data['1-0:2.8.1'] || 0) + (data['1-0:2.8.2'] || 0);
+      
+      document.getElementById('totalConsumption').textContent = totalCons.toFixed(1);
+      document.getElementById('totalProduction').textContent = totalProd.toFixed(1);
+    }
+
+    function displayMeterData(data) {
+      const meterId = hexToAscii(data['0-0:96.1.1'] || '');
+      
+      const html = `
+        <div class="section">📋 Identification</div>
+        <div class="row"><span class="label">Meter ID (ASCII):</span><span class="value">${meterId}</span></div>
+        <div class="row"><span class="label">Equipment ID (Hex):</span><span class="value">${data['0-0:96.1.1'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Meter Model:</span><span class="value">${data['0-0:96.1.4'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Meter Version:</span><span class="value">${data['1-0:94.32.1'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Second ID:</span><span class="value">${data['0-0:96.1.2'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Timestamp:</span><span class="value">${data['0-0:1.0.0'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Tariff Indicator:</span><span class="value">${data['0-0:96.14.0'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Switch Position:</span><span class="value">${data['0-0:96.3.10'] || 'N/A'}</span></div>
+        <div class="row"><span class="label">Text Message:</span><span class="value">${data['0-0:96.13.0'] || 'N/A'}</span></div>
+        
+        <div class="section">⚡ Power (kW)</div>
+        <div class="row"><span class="label">Total Import:</span><span class="value">${(data['1-0:1.7.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">Total Export:</span><span class="value">${(data['1-0:2.7.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">Average Demand:</span><span class="value">${(data['1-0:1.4.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">Max Demand (Month):</span><span class="value">${(data['1-0:1.6.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">Max Demand (13 Months):</span><span class="value">${(data['0-0:98.1.0'] || 0).toFixed(3)} kW</span></div>
+        
+        <div class="section">🔌 Per-Phase Power Import (kW)</div>
+        <div class="row"><span class="label">L1 Import:</span><span class="value">${(data['1-0:21.7.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">L2 Import:</span><span class="value">${(data['1-0:41.7.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">L3 Import:</span><span class="value">${(data['1-0:61.7.0'] || 0).toFixed(3)} kW</span></div>
+        
+        <div class="section">🔌 Per-Phase Power Export (kW)</div>
+        <div class="row"><span class="label">L1 Export:</span><span class="value">${(data['1-0:22.7.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">L2 Export:</span><span class="value">${(data['1-0:42.7.0'] || 0).toFixed(3)} kW</span></div>
+        <div class="row"><span class="label">L3 Export:</span><span class="value">${(data['1-0:62.7.0'] || 0).toFixed(3)} kW</span></div>
+        
+        <div class="section">📊 Energy Consumption (kWh)</div>
+        <div class="row"><span class="label">Tariff 1:</span><span class="value">${(data['1-0:1.8.1'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 2:</span><span class="value">${(data['1-0:1.8.2'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 3:</span><span class="value">${(data['1-0:1.8.3'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 4:</span><span class="value">${(data['1-0:1.8.4'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 5:</span><span class="value">${(data['1-0:1.8.5'] || 0).toFixed(3)} kWh</span></div>
+        
+        <div class="section">📊 Energy Production (kWh)</div>
+        <div class="row"><span class="label">Tariff 1:</span><span class="value">${(data['1-0:2.8.1'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 2:</span><span class="value">${(data['1-0:2.8.2'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 3:</span><span class="value">${(data['1-0:2.8.3'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 4:</span><span class="value">${(data['1-0:2.8.4'] || 0).toFixed(3)} kWh</span></div>
+        <div class="row"><span class="label">Tariff 5:</span><span class="value">${(data['1-0:2.8.5'] || 0).toFixed(3)} kWh</span></div>
+        
+        <div class="section">⚡ Voltage (V)</div>
+        <div class="row"><span class="label">L1:</span><span class="value">${(data['1-0:32.7.0'] || 0).toFixed(1)} V</span></div>
+        <div class="row"><span class="label">L2:</span><span class="value">${(data['1-0:52.7.0'] || 0).toFixed(1)} V</span></div>
+        <div class="row"><span class="label">L3:</span><span class="value">${(data['1-0:72.7.0'] || 0).toFixed(1)} V</span></div>
+        
+        <div class="section">⚡ Current (A)</div>
+        <div class="row"><span class="label">L1:</span><span class="value">${(data['1-0:31.7.0'] || 0).toFixed(2)} A</span></div>
+        <div class="row"><span class="label">L2:</span><span class="value">${(data['1-0:51.7.0'] || 0).toFixed(2)} A</span></div>
+        <div class="row"><span class="label">L3:</span><span class="value">${(data['1-0:71.7.0'] || 0).toFixed(2)} A</span></div>
+      `;
+      document.getElementById('meterData').innerHTML = html;
+    }
+
+    // Initialize
     updateStatus();
     setInterval(updateStatus, 5000);
+    connectWebSocket();
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    });
   </script>
 </body>
 

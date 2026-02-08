@@ -7,7 +7,7 @@
 #define ENABLE_OTA 1        // OTA updates enabled
 
 // Firmware version (bump on release: minor = features, patch = fixes)
-#define FIRMWARE_VERSION "v1.1.0"
+#define FIRMWARE_VERSION "v1.0.0-ow"
 #define DEVICE_NAME_PREFIX "OpenWatt-P1"
 #define SALT_STRING "CHANGE_ME_SALT"
 
