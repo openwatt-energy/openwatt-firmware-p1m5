@@ -2,6 +2,7 @@
 #include "serial_console.h"
 #include <Preferences.h>
 #include <cstring>
+#include <nvs.h>
 
 #define AP_SSID_PREFIX "OpenWatt-P1"
 // WiFi credentials stored using Preferences API (more reliable than direct NVS)
@@ -96,8 +97,48 @@ void WiFiManager::saveCredentials(Preferences& prefs, const char* ssid, const ch
 
 WiFiConfig WiFiManager::loadCredentials(Preferences& prefs) {
   WiFiConfig config;
+  
+  // Try new format first (openwatt namespace)
   config.ssid = prefs.getString(PREFS_KEY_WIFI_SSID, "");
   config.password = prefs.getString(PREFS_KEY_WIFI_PASS, "");
+  
+  // If not found, try Xenn format (wifi-settings namespace with string keys)
+  if (config.ssid.length() == 0) {
+    nvs_handle_t h;
+    if (nvs_open("wifi-settings", NVS_READONLY, &h) == ESP_OK) {
+      size_t len = 0;
+      
+      // Try to get ssid as string
+      if (nvs_get_str(h, "ssid", NULL, &len) == ESP_OK && len > 0) {
+        char* buf = (char*)malloc(len);
+        if (buf && nvs_get_str(h, "ssid", buf, &len) == ESP_OK) {
+          config.ssid = String(buf);
+          SerialConsole::println("WiFi: Recovered SSID from Xenn format");
+        }
+        if (buf) free(buf);
+      }
+      
+      // Try to get password as string
+      len = 0;
+      if (nvs_get_str(h, "password", NULL, &len) == ESP_OK && len > 0) {
+        char* buf = (char*)malloc(len);
+        if (buf && nvs_get_str(h, "password", buf, &len) == ESP_OK) {
+          config.password = String(buf);
+          SerialConsole::println("WiFi: Recovered password from Xenn format");
+        }
+        if (buf) free(buf);
+      }
+      
+      nvs_close(h);
+      
+      // Save to new format if we recovered anything
+      if (config.ssid.length() > 0) {
+        saveCredentials(prefs, config.ssid, config.password);
+        SerialConsole::println("WiFi: Migrated Xenn credentials to new format");
+      }
+    }
+  }
+  
   return config;
 }
 
