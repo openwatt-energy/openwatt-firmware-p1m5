@@ -7,7 +7,7 @@
 #define ENABLE_OTA 1        // OTA updates enabled
 
 // Firmware version (bump on release: minor = features, patch = fixes)
-#define FIRMWARE_VERSION "v1.0.8-ow"
+#define FIRMWARE_VERSION "v1.0.9-ow"
 #define DEVICE_NAME_PREFIX "OpenWatt-P1"
 #define SALT_STRING "CHANGE_ME_SALT"
 
@@ -17,5 +17,8 @@
 #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
 #define MQTT_DEFAULT_TOPIC "P1M5/"
 // Production secret key for password generation (matches setup_auth.py)
+
+// MQTT Publish interval (milliseconds) - default 5 seconds
+#define MQTT_PUBLISH_INTERVAL_MS 5000
 
 #endif

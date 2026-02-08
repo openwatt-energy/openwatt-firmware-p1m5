@@ -121,6 +121,14 @@ void publishToMQTT(const P1Data& data) {
     return;
   }
   
+  // Check publish interval
+  static unsigned long lastMQTTPublish = 0;
+  unsigned long now = millis();
+  if (now - lastMQTTPublish < MQTT_PUBLISH_INTERVAL_MS) {
+    return;  // Too soon, skip this publish
+  }
+  lastMQTTPublish = now;
+  
   JsonDocument doc;
   
   // Unix timestamp
