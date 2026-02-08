@@ -6,7 +6,7 @@
 #include <WiFi.h>
 
 #define OTA_FIRMWARE_URL "https://api.example.com/api/p1m5/firmware"
-#define OTA_TIMEOUT_MS 30000  // 30 seconds
+#define OTA_TIMEOUT_MS 120000  // 120 seconds - allow time for large firmware downloads
 
 String OTAClient::firmwareURL = OTA_FIRMWARE_URL;
 

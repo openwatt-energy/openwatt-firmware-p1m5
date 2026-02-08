@@ -3,6 +3,10 @@
 #include "debug_logger.h"
 #include "led_handler.h"
 #include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+
+// External WebSocket reference (defined in main.cpp)
+extern AsyncWebSocket ws;
 
 String OTAUpdate::deviceSerial = "";
 String OTAUpdate::currentVersion = "";
@@ -41,6 +45,12 @@ bool OTAUpdate::checkUpdate() {
   
   if (info.updateAvailable) {
     LOG_INFO(MODULE_OTA, "Update available, downloading...");
+    
+    // Close all WebSocket clients to free up SSL/WiFi resources for OTA
+    LOG_INFO(MODULE_OTA, "Closing WebSocket connections for OTA...");
+    ws.closeAll();
+    delay(100);  // Give time for connections to close
+    
     LEDHandler::setOTAUpdate(true);  // Indicate OTA in progress
     
     bool success = OTAClient::downloadAndApply(deviceSerial, currentVersion, String(macStr));

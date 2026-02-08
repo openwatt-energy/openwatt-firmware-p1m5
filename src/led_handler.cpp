@@ -1,96 +1,195 @@
 #include "led_handler.h"
 
-// Built-in LED pin (GPIO 2 on most ESP32 boards)
-// For M5Stack Core ESP32 with RGB LED, you may need to use FastLED or NeoPixel library
-#define LED_BUILTIN_PIN 2
+// M5Stack Atom has RGB LED on GPIO 27
+#define LED_PIN 27
+#define NUM_LEDS 1
 
-LEDState LEDHandler::currentState = LEDState::OFF;
-bool LEDHandler::apModeActive = false;
-bool LEDHandler::otaUpdating = false;
-unsigned long LEDHandler::lastBlinkTime = 0;
+// Static members
+LEDStatus LEDHandler::currentStatus = LEDStatus::BOOTING;
+CRGB LEDHandler::leds[NUM_LEDS];
+unsigned long LEDHandler::lastUpdate = 0;
+int LEDHandler::blinkPhase = 0;
 bool LEDHandler::blinkState = false;
 
 void LEDHandler::begin() {
-  // Initialize LED pin
-  pinMode(LED_BUILTIN_PIN, OUTPUT);
-  digitalWrite(LED_BUILTIN_PIN, LOW);
+  // Initialize FastLED
+  FastLED.addLeds<SK6812, LED_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(128);  // 50% brightness
   
-  // Start with LED on (device powered)
-  setState(LEDState::ON);
-}
-
-void LEDHandler::setState(LEDState state) {
-  currentState = state;
-  lastBlinkTime = millis();
-  blinkState = false;
-  updateLED();
-}
-
-void LEDHandler::setAPMode(bool apMode) {
-  apModeActive = apMode;
-  if (apMode && !otaUpdating) {
-    setState(LEDState::SOLID_YELLOW);
-  } else if (!apMode && !otaUpdating) {
-    setState(LEDState::ON);
-  }
-}
-
-void LEDHandler::setOTAUpdate(bool updating) {
-  otaUpdating = updating;
-  if (updating) {
-    setState(LEDState::BLINKING_BLUE);
-  } else {
-    // Return to previous state
-    if (apModeActive) {
-      setState(LEDState::SOLID_YELLOW);
-    } else {
-      setState(LEDState::ON);
-    }
-  }
+  // Start with booting state (red)
+  setBooting();
 }
 
 void LEDHandler::loop() {
   unsigned long now = millis();
   
-  // Handle blinking states
-  if (currentState == LEDState::BLINKING_BLUE || currentState == LEDState::BLINKING_YELLOW) {
-    if (now - lastBlinkTime >= 500) {  // 500ms blink interval
-      blinkState = !blinkState;
-      lastBlinkTime = now;
-      updateLED();
-    }
+  // Update LED based on current status
+  if (now - lastUpdate >= 100) {  // Update every 100ms
+    updateLED();
+    lastUpdate = now;
+  }
+  
+  FastLED.show();
+}
+
+void LEDHandler::setBooting() {
+  currentStatus = LEDStatus::BOOTING;
+}
+
+void LEDHandler::setError() {
+  currentStatus = LEDStatus::ERROR_UNKNOWN;
+}
+
+void LEDHandler::setOTAUpdate(bool inProgress) {
+  if (inProgress) {
+    currentStatus = LEDStatus::OTA_IN_PROGRESS;
+  } else {
+    // Return to previous state logic
+    setWiFiStatus(true, true, true);  // Default to all good
   }
 }
 
-void LEDHandler::updateLED() {
-  // For single LED (GPIO 2), we use different blink patterns:
-  // - ON: solid on
-  // - BLINKING_BLUE: fast blink (OTA update)
-  // - BLINKING_YELLOW: medium blink (not used currently)
-  // - SOLID_YELLOW: solid on (AP mode - same as ON for single LED)
+void LEDHandler::setAPMode(bool active, bool meterConnected, bool wifiAvailable) {
+  if (!active) return;
   
-  switch (currentState) {
-    case LEDState::OFF:
-      digitalWrite(LED_BUILTIN_PIN, LOW);
+  if (!meterConnected) {
+    currentStatus = LEDStatus::AP_MODE_NO_METER;
+  } else if (!wifiAvailable) {
+    currentStatus = LEDStatus::AP_MODE_NO_WIFI;
+  } else {
+    currentStatus = LEDStatus::AP_MODE_READY;
+  }
+}
+
+void LEDHandler::setWiFiStatus(bool connected, bool meterConnected, bool cloudConnected) {
+  if (!connected) {
+    // Should be in AP mode, handled separately
+    return;
+  }
+  
+  if (!meterConnected && !cloudConnected) {
+    currentStatus = LEDStatus::WIFI_NO_METER_CLOUD;
+  } else if (!meterConnected) {
+    currentStatus = LEDStatus::WIFI_NO_METER;
+  } else if (!cloudConnected) {
+    currentStatus = LEDStatus::WIFI_NO_CLOUD;
+  } else {
+    currentStatus = LEDStatus::WIFI_METER_CLOUD;
+  }
+}
+
+void LEDHandler::setColor(CRGB color) {
+  leds[0] = color;
+  FastLED.show();
+}
+
+void LEDHandler::setStatus(LEDStatus status) {
+  currentStatus = status;
+}
+
+void LEDHandler::updateLED() {
+  static unsigned long patternStart = 0;
+  unsigned long now = millis();
+  
+  switch (currentStatus) {
+    case LEDStatus::BOOTING:
+      // Red continuous
+      applyPattern(COLOR_RED, BlinkPattern::SOLID);
       break;
       
-    case LEDState::ON:
-      digitalWrite(LED_BUILTIN_PIN, HIGH);
+    case LEDStatus::ERROR_UNKNOWN:
+      // Red fast blink
+      applyPattern(COLOR_RED, BlinkPattern::FAST);
       break;
       
-    case LEDState::BLINKING_BLUE:
-      // Fast blink for OTA (blue = fast)
-      digitalWrite(LED_BUILTIN_PIN, blinkState ? HIGH : LOW);
+    case LEDStatus::OTA_IN_PROGRESS:
+      // Orange continuous
+      applyPattern(COLOR_ORANGE, BlinkPattern::SOLID);
       break;
       
-    case LEDState::BLINKING_YELLOW:
-      // Medium blink (yellow = medium speed)
-      digitalWrite(LED_BUILTIN_PIN, blinkState ? HIGH : LOW);
+    case LEDStatus::AP_MODE_NO_METER:
+    case LEDStatus::AP_MODE_NO_WIFI:
+      // Blue slow blink
+      applyPattern(COLOR_BLUE, BlinkPattern::SLOW);
       break;
       
-    case LEDState::SOLID_YELLOW:
-      // Solid on for AP mode (yellow = solid)
-      digitalWrite(LED_BUILTIN_PIN, HIGH);
+    case LEDStatus::AP_MODE_READY:
+      // Blue continuous
+      applyPattern(COLOR_BLUE, BlinkPattern::SOLID);
+      break;
+      
+    case LEDStatus::WIFI_NO_METER:
+      // Green slow blink
+      applyPattern(COLOR_GREEN, BlinkPattern::SLOW);
+      break;
+      
+    case LEDStatus::WIFI_NO_CLOUD:
+      // Green double blink
+      applyPattern(COLOR_GREEN, BlinkPattern::DOUBLE);
+      break;
+      
+    case LEDStatus::WIFI_METER_CLOUD:
+      // Green continuous
+      applyPattern(COLOR_GREEN, BlinkPattern::SOLID);
+      break;
+      
+    case LEDStatus::WIFI_NO_METER_CLOUD:
+      // Green triple blink
+      applyPattern(COLOR_GREEN, BlinkPattern::TRIPLE);
+      break;
+  }
+}
+
+void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
+  static unsigned long patternStart = 0;
+  static int phase = 0;
+  unsigned long now = millis();
+  
+  switch (pattern) {
+    case BlinkPattern::SOLID:
+      leds[0] = color;
+      break;
+      
+    case BlinkPattern::SLOW:
+      // ~1Hz (500ms on, 500ms off)
+      if ((now / 500) % 2 == 0) {
+        leds[0] = color;
+      } else {
+        leds[0] = COLOR_OFF;
+      }
+      break;
+      
+    case BlinkPattern::FAST:
+      // ~5Hz (100ms on, 100ms off)
+      if ((now / 100) % 2 == 0) {
+        leds[0] = color;
+      } else {
+        leds[0] = COLOR_OFF;
+      }
+      break;
+      
+    case BlinkPattern::DOUBLE:
+      // Two quick blinks, then pause
+      {
+        unsigned long cycle = now % 1500;  // 1.5 second cycle
+        if (cycle < 200 || (cycle > 400 && cycle < 600)) {
+          leds[0] = color;
+        } else {
+          leds[0] = COLOR_OFF;
+        }
+      }
+      break;
+      
+    case BlinkPattern::TRIPLE:
+      // Three quick blinks, then pause
+      {
+        unsigned long cycle = now % 2000;  // 2 second cycle
+        if (cycle < 200 || (cycle > 400 && cycle < 600) || (cycle > 800 && cycle < 1000)) {
+          leds[0] = color;
+        } else {
+          leds[0] = COLOR_OFF;
+        }
+      }
       break;
   }
 }

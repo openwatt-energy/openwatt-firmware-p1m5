@@ -460,8 +460,8 @@ void setup() {
   SerialConsole::flush();
   yield();
   WiFiManager::begin(preferences, state.deviceId);
-  // Set LED to yellow (AP mode active)
-  LEDHandler::setAPMode(true);
+  // Set LED to blue (AP mode active, trying to connect)
+  LEDHandler::setAPMode(true, false, true);
   yield();
   delay(100);
 
@@ -584,11 +584,14 @@ void loop() {
     if (WiFiManager::isConnected() && WiFiManager::getIP().length() > 0) {
       SerialConsole::println("WiFi connected: " + WiFiManager::getIP());
       SerialConsole::flush();
-      // WiFi connected - turn off AP mode LED (back to ON)
-      LEDHandler::setAPMode(false);
+      // WiFi connected - update LED status
+      bool meterConnected = P1Reader::isConnected();
+      bool cloudConnected = MQTTClient::isConnected();
+      LEDHandler::setWiFiStatus(true, meterConnected, cloudConnected);
     } else {
       // WiFi not connected - ensure AP mode LED is on
-      LEDHandler::setAPMode(true);
+      bool meterConnected = P1Reader::isConnected();
+      LEDHandler::setAPMode(true, meterConnected, false);
     }
     yield();
   }
