@@ -7,7 +7,7 @@
 #define ENABLE_OTA 1        // OTA updates enabled
 
 // Firmware version (bump on release: minor = features, patch = fixes)
-#define FIRMWARE_VERSION "v1.0.9-ow"
+#define FIRMWARE_VERSION "v1.0.10-ow"
 #define DEVICE_NAME_PREFIX "OpenWatt-P1"
 #define SALT_STRING "CHANGE_ME_SALT"
 
@@ -20,5 +20,8 @@
 
 // MQTT Publish interval (milliseconds) - default 5 seconds
 #define MQTT_PUBLISH_INTERVAL_MS 5000
+
+// MQTT Status publish interval (milliseconds) - default 60 seconds for firmware info
+#define MQTT_STATUS_INTERVAL_MS 60000
 
 #endif

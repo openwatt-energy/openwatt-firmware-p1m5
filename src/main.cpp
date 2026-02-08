@@ -283,6 +283,37 @@ void publishToMQTT(const P1Data& data) {
   String topic = state.deviceId + "/data/readings";
   MQTTClient::publish(topic, jsonString);
 }
+
+// Publish device status (firmware version, etc.) periodically
+void publishMQTTStatus() {
+  if (!MQTTClient::isConnected()) {
+    return;
+  }
+  
+  JsonDocument doc;
+  
+  // Device info
+  doc["dongle_id"] = state.deviceId;
+  doc["fw_ver"] = FIRMWARE_VERSION;
+  doc["timestamp"] = millis() / 1000;
+  
+  // Connection status
+  doc["wifi_connected"] = WiFiManager::isConnected();
+  doc["mqtt_connected"] = true;  // We know it's connected if we're here
+  doc["meter_connected"] = P1Reader::isConnected();
+  
+  // Uptime
+  doc["uptime_ms"] = millis();
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  // Publish to status topic
+  String topic = state.deviceId + "/sys/status";
+  MQTTClient::publish(topic, jsonString);
+  
+  SerialConsole::println("MQTT: Published status: fw=" + String(FIRMWARE_VERSION));
+}
 #else
 void publishToMQTT(const P1Data& data) {
   (void)data;
@@ -572,6 +603,14 @@ void loop() {
   #if ENABLE_MQTT
   MQTTClient::reconnect();
   MQTTClient::loop();
+  yield();
+  
+  // Publish status periodically (firmware version, uptime, etc.)
+  static unsigned long lastStatusPublish = 0;
+  if (millis() - lastStatusPublish > MQTT_STATUS_INTERVAL_MS) {
+    lastStatusPublish = millis();
+    publishMQTTStatus();
+  }
   yield();
   #endif
   
