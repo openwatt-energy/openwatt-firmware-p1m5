@@ -5,7 +5,7 @@
 #include <Update.h>
 #include <WiFi.h>
 
-#define OTA_FIRMWARE_URL "https://api.example.com/p1m5/firmware"
+#define OTA_FIRMWARE_URL "https://api.example.com/api/p1m5/firmware"
 #define OTA_TIMEOUT_MS 30000  // 30 seconds
 
 String OTAClient::firmwareURL = OTA_FIRMWARE_URL;
