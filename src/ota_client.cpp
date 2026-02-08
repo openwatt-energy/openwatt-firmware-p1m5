@@ -131,8 +131,9 @@ bool OTAClient::downloadAndApply(const String& deviceSerial, const String& curre
     return false;
   }
   
-  // Begin OTA update
-  if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+  // Begin OTA update with known size for proper verification
+  size_t updateSize = (contentLength > 0) ? contentLength : UPDATE_SIZE_UNKNOWN;
+  if (!Update.begin(updateSize)) {
     LOG_ERROR(MODULE_OTA, "Update.begin() failed: %s", Update.errorString());
     http.end();
     return false;
@@ -235,7 +236,8 @@ bool OTAClient::downloadAndApplyFromURL(const String& url) {
     return false;
   }
 
-  if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+  size_t updateSize = (contentLength > 0) ? contentLength : UPDATE_SIZE_UNKNOWN;
+  if (!Update.begin(updateSize)) {
     LOG_ERROR(MODULE_OTA, "Update.begin() failed: %s", Update.errorString());
     http.end();
     return false;
