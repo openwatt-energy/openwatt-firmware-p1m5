@@ -13,7 +13,7 @@ private:
   static String deviceSerial;
   static String currentVersion;
   static unsigned long lastCheckTime;
-  static const unsigned long CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;  // 24 hours
+  static const unsigned long CHECK_INTERVAL_MS = 60 * 60 * 1000;  // 1 hour
 };
 
 #endif

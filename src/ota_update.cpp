@@ -16,6 +16,11 @@ void OTAUpdate::begin(const String& deviceSerial, const String& currentVersion) 
   LOG_INFO(MODULE_OTA, "OTA update service initialized");
   LOG_INFO(MODULE_OTA, "  Device Serial: %s", deviceSerial.c_str());
   LOG_INFO(MODULE_OTA, "  Current Version: %s", currentVersion.c_str());
+  LOG_INFO(MODULE_OTA, "  Check interval: 1 hour");
+  
+  // Trigger OTA check after a short delay (to allow WiFi to stabilize)
+  // This ensures we check for updates on every reboot
+  LOG_INFO(MODULE_OTA, "Scheduling initial OTA check in 30 seconds...");
 }
 
 bool OTAUpdate::checkUpdate() {
@@ -55,7 +60,7 @@ bool OTAUpdate::checkUpdate() {
 }
 
 void OTAUpdate::loop() {
-  // Check for updates every 24 hours (or on first run)
+  // Check for updates every hour (or on first run after 30 second delay)
   unsigned long now = millis();
   
   // Handle millis() overflow
@@ -63,8 +68,19 @@ void OTAUpdate::loop() {
     lastCheckTime = 0;
   }
   
-  if (now - lastCheckTime >= CHECK_INTERVAL_MS || lastCheckTime == 0) {
+  // On first boot (lastCheckTime == 0), wait 30 seconds for WiFi to stabilize
+  // Then check every hour thereafter
+  static const unsigned long BOOT_DELAY_MS = 30000;  // 30 seconds after boot
+  
+  if (lastCheckTime == 0 && now >= BOOT_DELAY_MS) {
+    // First check after boot delay
     lastCheckTime = now;
+    LOG_INFO(MODULE_OTA, "Performing initial OTA check after boot...");
+    checkUpdate();
+  } else if (lastCheckTime > 0 && now - lastCheckTime >= CHECK_INTERVAL_MS) {
+    // Regular hourly check
+    lastCheckTime = now;
+    LOG_INFO(MODULE_OTA, "Performing scheduled OTA check...");
     checkUpdate();
   }
 }

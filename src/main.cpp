@@ -91,6 +91,31 @@ void broadcastToWebSocket(const P1Data& data);
 // ============================================================================
 
 #if ENABLE_MQTT
+// Helper to generate UUID v4 format
+String generateUUID() {
+  char uuid[37];
+  const char* hex = "0123456789ABCDEF";
+  uint8_t bytes[16];
+  
+  // Generate random bytes
+  for (int i = 0; i < 16; i++) {
+    bytes[i] = random(256);
+  }
+  
+  // Set version (4) and variant (10xxxxxx)
+  bytes[6] = (bytes[6] & 0x0F) | 0x40;
+  bytes[8] = (bytes[8] & 0x3F) | 0x80;
+  
+  // Format as UUID string
+  sprintf(uuid, "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+    bytes[0], bytes[1], bytes[2], bytes[3],
+    bytes[4], bytes[5], bytes[6], bytes[7],
+    bytes[8], bytes[9], bytes[10], bytes[11],
+    bytes[12], bytes[13], bytes[14], bytes[15]);
+  
+  return String(uuid);
+}
+
 void publishToMQTT(const P1Data& data) {
   if (!MQTTClient::isConnected()) {
     return;
@@ -98,32 +123,157 @@ void publishToMQTT(const P1Data& data) {
   
   JsonDocument doc;
   
-  doc["equipment_id"] = data.equipmentId;
-  doc["timestamp"] = data.timestamp;
-  doc["tariff"] = data.tariffIndicator;
+  // Unix timestamp
+  doc["timestamp"] = millis() / 1000;
   
-  JsonObject consumption = doc["consumption"].to<JsonObject>();
-  consumption["tariff1"] = data.consumptionT1;
-  consumption["tariff2"] = data.consumptionT2;
+  // Timestamp from meter
+  doc["0-0:1.0.0"] = data.timestamp;
   
-  JsonObject production = doc["production"].to<JsonObject>();
-  production["tariff1"] = data.productionT1;
-  production["tariff2"] = data.productionT2;
+  // Equipment identifier
+  doc["0-0:96.1.1"] = data.equipmentId;
+  doc["0-0:96.1.2"] = data.secondId;
+  doc["0-0:96.1.4"] = data.meterModel;
+  doc["0-0:96.13.0"] = data.textMessage;
+  doc["0-0:96.14.0"] = String(data.tariffIndicator);
+  doc["0-0:96.3.10"] = String(data.switchPosition);
   
-  JsonObject power = doc["power"].to<JsonObject>();
-  power["consumed"] = data.powerConsumed;
-  power["produced"] = data.powerProduced;
+  // Device control switches (default to 0 if not available)
+  doc["0-1:96.3.10"] = "0";
+  doc["0-2:96.3.10"] = "0";
+  doc["0-3:96.3.10"] = "0";
+  doc["0-4:96.3.10"] = "0";
   
-  JsonObject demand = doc["demand"].to<JsonObject>();
-  demand["current"] = data.avgDemand;
-  demand["max_month"] = data.maxDemandMonth;
-  demand["max_13months"] = data.maxDemand13M;
+  // Limiter
+  JsonObject t17_0_0 = doc["0-0:17.0.0"].to<JsonObject>();
+  t17_0_0["value"] = 99.999;
+  t17_0_0["unit"] = "kW";
+  
+  // Average demand
+  JsonObject t1_4_0 = doc["1-0:1.4.0"].to<JsonObject>();
+  t1_4_0["value"] = data.avgDemand;
+  t1_4_0["unit"] = "kW";
+  
+  // Max demand with capture time
+  JsonObject t1_6_0 = doc["1-0:1.6.0"].to<JsonObject>();
+  t1_6_0["value"] = data.maxDemandMonth;
+  t1_6_0["unit"] = "kW";
+  t1_6_0["capture_time"] = data.maxDemandTimestamp;
+  if (data.maxDemandTimestamp.length() >= 12) {
+    // Convert YYMMDDhhmmss to timestamp (simplified)
+    int year = data.maxDemandTimestamp.substring(0, 2).toInt();
+    year += (year >= 50) ? 1900 : 2000;
+    t1_6_0["timestamp"] = year * 10000000000ULL + data.maxDemandTimestamp.substring(2).toInt();
+  }
+  
+  // Active power
+  JsonObject t1_7_0 = doc["1-0:1.7.0"].to<JsonObject>();
+  t1_7_0["value"] = data.powerConsumed;
+  t1_7_0["unit"] = "kW";
+  
+  // Energy consumption T1
+  JsonObject t1_8_1 = doc["1-0:1.8.1"].to<JsonObject>();
+  t1_8_1["value"] = data.consumptionT1;
+  t1_8_1["unit"] = "kWh";
+  
+  // Energy consumption T2
+  JsonObject t1_8_2 = doc["1-0:1.8.2"].to<JsonObject>();
+  t1_8_2["value"] = data.consumptionT2;
+  t1_8_2["unit"] = "kWh";
+  
+  // Active power export
+  JsonObject t2_7_0 = doc["1-0:2.7.0"].to<JsonObject>();
+  t2_7_0["value"] = data.powerProduced;
+  t2_7_0["unit"] = "kW";
+  
+  // Energy production T1
+  JsonObject t2_8_1 = doc["1-0:2.8.1"].to<JsonObject>();
+  t2_8_1["value"] = data.productionT1;
+  t2_8_1["unit"] = "kWh";
+  
+  // Energy production T2
+  JsonObject t2_8_2 = doc["1-0:2.8.2"].to<JsonObject>();
+  t2_8_2["value"] = data.productionT2;
+  t2_8_2["unit"] = "kWh";
+  
+  // Power import L1
+  JsonObject t21_7_0 = doc["1-0:21.7.0"].to<JsonObject>();
+  t21_7_0["value"] = data.powerImportL1;
+  t21_7_0["unit"] = "kW";
+  
+  // Power export L1
+  JsonObject t22_7_0 = doc["1-0:22.7.0"].to<JsonObject>();
+  t22_7_0["value"] = data.powerExportL1;
+  t22_7_0["unit"] = "kW";
+  
+  // Fuse limit
+  JsonObject t31_4_0 = doc["1-0:31.4.0"].to<JsonObject>();
+  t31_4_0["value"] = 999.99;
+  t31_4_0["unit"] = "A";
+  
+  // Current L1
+  JsonObject t31_7_0 = doc["1-0:31.7.0"].to<JsonObject>();
+  t31_7_0["value"] = data.currentL1;
+  t31_7_0["unit"] = "A";
+  
+  // Voltage L1
+  JsonObject t32_7_0 = doc["1-0:32.7.0"].to<JsonObject>();
+  t32_7_0["value"] = data.voltageL1;
+  t32_7_0["unit"] = "V";
+  
+  // Power import L2
+  JsonObject t41_7_0 = doc["1-0:41.7.0"].to<JsonObject>();
+  t41_7_0["value"] = data.powerImportL2;
+  t41_7_0["unit"] = "kW";
+  
+  // Power export L2
+  JsonObject t42_7_0 = doc["1-0:42.7.0"].to<JsonObject>();
+  t42_7_0["value"] = data.powerExportL2;
+  t42_7_0["unit"] = "kW";
+  
+  // Current L2
+  JsonObject t51_7_0 = doc["1-0:51.7.0"].to<JsonObject>();
+  t51_7_0["value"] = data.currentL2;
+  t51_7_0["unit"] = "A";
+  
+  // Voltage L2
+  JsonObject t52_7_0 = doc["1-0:52.7.0"].to<JsonObject>();
+  t52_7_0["value"] = data.voltageL2;
+  t52_7_0["unit"] = "V";
+  
+  // Power import L3
+  JsonObject t61_7_0 = doc["1-0:61.7.0"].to<JsonObject>();
+  t61_7_0["value"] = data.powerImportL3;
+  t61_7_0["unit"] = "kW";
+  
+  // Power export L3
+  JsonObject t62_7_0 = doc["1-0:62.7.0"].to<JsonObject>();
+  t62_7_0["value"] = data.powerExportL3;
+  t62_7_0["unit"] = "kW";
+  
+  // Current L3
+  JsonObject t71_7_0 = doc["1-0:71.7.0"].to<JsonObject>();
+  t71_7_0["value"] = data.currentL3;
+  t71_7_0["unit"] = "A";
+  
+  // Voltage L3
+  JsonObject t72_7_0 = doc["1-0:72.7.0"].to<JsonObject>();
+  t72_7_0["value"] = data.voltageL3;
+  t72_7_0["unit"] = "V";
+  
+  // Meter version
+  doc["1-0:94.32.1"] = data.meterVersion;
+  
+  // Metadata
+  doc["id"] = generateUUID();
+  doc["dongle_id"] = state.deviceId;
+  doc["sent_timestamp"] = millis() / 1000;
   
   String jsonString;
   serializeJson(doc, jsonString);
   
-  MQTTConfig config = MQTTClient::getConfig();
-  MQTTClient::publish(config.topic, jsonString);
+  // Publish to device-specific topic: P1M5/<device_id>/data/readings
+  String topic = state.deviceId + "/data/readings";
+  MQTTClient::publish(topic, jsonString);
 }
 #else
 void publishToMQTT(const P1Data& data) {
@@ -131,12 +281,48 @@ void publishToMQTT(const P1Data& data) {
 }
 #endif
 
-// Called from P1 reader task when a valid telegram is received.
+// Called from P1 reader task when a valid telegram received.
 void onP1DataReceived(const P1Data& data) {
-  latestData = data;
-  WebAPI::setLatestData(data);
-  publishToMQTT(data);
-  broadcastToWebSocket(data);
+  // Merge data - only update fields that have values in the new telegram
+  // This handles meters that send different telegram types (energy vs voltage/current)
+  if (data.equipmentId.length() > 0) latestData.equipmentId = data.equipmentId;
+  if (data.timestamp.length() > 0) latestData.timestamp = data.timestamp;
+  if (data.tariffIndicator > 0) latestData.tariffIndicator = data.tariffIndicator;
+  if (data.consumptionT1 > 0) latestData.consumptionT1 = data.consumptionT1;
+  if (data.consumptionT2 > 0) latestData.consumptionT2 = data.consumptionT2;
+  if (data.productionT1 > 0) latestData.productionT1 = data.productionT1;
+  if (data.productionT2 > 0) latestData.productionT2 = data.productionT2;
+  if (data.powerConsumed > 0) latestData.powerConsumed = data.powerConsumed;
+  if (data.powerProduced > 0) latestData.powerProduced = data.powerProduced;
+  if (data.avgDemand > 0) latestData.avgDemand = data.avgDemand;
+  if (data.maxDemandMonth > 0) latestData.maxDemandMonth = data.maxDemandMonth;
+  if (data.maxDemand13M > 0) latestData.maxDemand13M = data.maxDemand13M;
+  if (data.maxDemandTimestamp.length() > 0) latestData.maxDemandTimestamp = data.maxDemandTimestamp;
+  
+  // Identification
+  if (data.meterModel.length() > 0) latestData.meterModel = data.meterModel;
+  if (data.meterVersion.length() > 0) latestData.meterVersion = data.meterVersion;
+  if (data.secondId.length() > 0) latestData.secondId = data.secondId;
+  if (data.textMessage.length() > 0) latestData.textMessage = data.textMessage;
+  
+  // Voltage (accept 0 values as they are valid readings)
+  if (data.voltageL1 >= 0) latestData.voltageL1 = data.voltageL1;
+  if (data.voltageL2 >= 0) latestData.voltageL2 = data.voltageL2;
+  if (data.voltageL3 >= 0) latestData.voltageL3 = data.voltageL3;
+  
+  // Current (accept 0 values as they are valid readings)
+  if (data.currentL1 >= 0) latestData.currentL1 = data.currentL1;
+  if (data.currentL2 >= 0) latestData.currentL2 = data.currentL2;
+  if (data.currentL3 >= 0) latestData.currentL3 = data.currentL3;
+  
+  // Switch position
+  if (data.switchPosition >= 0) latestData.switchPosition = data.switchPosition;
+  
+  latestData.valid = true;
+  
+  WebAPI::setLatestData(latestData);
+  publishToMQTT(latestData);
+  broadcastToWebSocket(latestData);
 }
 
 // ============================================================================
@@ -146,18 +332,48 @@ void onP1DataReceived(const P1Data& data) {
 void broadcastToWebSocket(const P1Data& data) {
   JsonDocument doc;
   
+  // Add server timestamp so UI can see update frequency even if meter data unchanged
+  doc["last_update"] = String(millis());
+  
+  // Identification
   doc["0-0:96.1.1"] = data.equipmentId;
+  doc["0-0:96.1.4"] = data.meterModel;
+  doc["1-0:94.32.1"] = data.meterVersion;
+  doc["0-0:96.1.2"] = data.secondId;
+  doc["0-0:96.13.0"] = data.textMessage;
+  
+  // Timestamp and tariff
   doc["0-0:1.0.0"] = data.timestamp;
   doc["0-0:96.14.0"] = data.tariffIndicator;
+  
+  // Energy consumption/production (kWh)
   doc["1-0:1.8.1"] = data.consumptionT1;
   doc["1-0:2.8.1"] = data.productionT1;
   doc["1-0:1.8.2"] = data.consumptionT2;
   doc["1-0:2.8.2"] = data.productionT2;
+  
+  // Instantaneous power (kW)
   doc["1-0:1.7.0"] = data.powerConsumed;
   doc["1-0:2.7.0"] = data.powerProduced;
   doc["1-0:1.4.0"] = data.avgDemand;
+  
+  // Demand history
   doc["1-0:1.6.0"] = data.maxDemandMonth;
+  doc["1-0:1.6.0_timestamp"] = data.maxDemandTimestamp;
   doc["0-0:98.1.0"] = data.maxDemand13M;
+  
+  // Voltage (V) - 3 phases
+  doc["1-0:32.7.0"] = data.voltageL1;
+  doc["1-0:52.7.0"] = data.voltageL2;
+  doc["1-0:72.7.0"] = data.voltageL3;
+  
+  // Current (A) - 3 phases
+  doc["1-0:31.7.0"] = data.currentL1;
+  doc["1-0:51.7.0"] = data.currentL2;
+  doc["1-0:71.7.0"] = data.currentL3;
+  
+  // Switch position
+  doc["0-0:96.3.10"] = data.switchPosition;
   
   String jsonString;
   serializeJson(doc, jsonString);
@@ -173,9 +389,16 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                       AwsEventType type, void *arg, uint8_t *data, size_t len) {
   if (type == WS_EVT_CONNECT) {
     SerialConsole::println("WebSocket client connected: " + String(client->id()));
+    // Send initial data immediately
+    if (latestData.valid) {
+      broadcastToWebSocket(latestData);
+    }
   }
   else if (type == WS_EVT_DISCONNECT) {
     SerialConsole::println("WebSocket client disconnected: " + String(client->id()));
+  }
+  else if (type == WS_EVT_PONG) {
+    // Client responded to ping, connection is alive
   }
 }
 
@@ -199,7 +422,7 @@ void setup() {
     nvs_handle_t h;
     esp_err_t err = nvs_open("openwatt", NVS_READWRITE, &h);
     if (err == ESP_OK) {
-      const char* keys[] = {"email", "wifi_ssid", "wifi_password", "mqtt_host", "mqtt_topic", "mqtt_secret_key", "_init_done"};
+      const char* keys[] = {"email", "wifi_ssid", "wifi_password", "mqtt_host", "mqtt_topic", "_init_done"};
       for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
         size_t len = 0;
         if (nvs_get_str(h, keys[i], NULL, &len) == ESP_ERR_NVS_NOT_FOUND) {
@@ -254,11 +477,13 @@ void setup() {
   SerialConsole::println("Setting up MQTT...");
   SerialConsole::flush();
   yield();
-  // Get secret key from NVS (or use test key for development)
-  String mqttSecretKey = preferences.getString("mqtt_secret_key", "");
-  if (mqttSecretKey.length() == 0) {
-    mqttSecretKey = "test_secret_key_for_development";
-    SerialConsole::println("MQTT: Using test secret key");
+  // Use hardcoded production secret key from config.h
+  String mqttSecretKey = SALT_STRING;
+  SerialConsole::println("MQTT: Using hardcoded secret key");
+  // Set default MQTT topic if not configured
+  if (preferences.getString("mqtt_topic", "").length() == 0) {
+    preferences.putString("mqtt_topic", "P1M5/");
+    SerialConsole::println("MQTT: Set default topic to P1M5/");
   }
   MQTTClient::begin(preferences, state.deviceId, mqttSecretKey);
   yield();

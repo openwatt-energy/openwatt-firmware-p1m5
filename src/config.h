@@ -11,9 +11,11 @@
 #define DEVICE_NAME_PREFIX "OpenWatt-P1"
 #define SALT_STRING "CHANGE_ME_SALT"
 
-// MQTT Configuration
+// MQTT Configuration for mqtt.example.com
 #define MQTT_BROKER_HOST "mqtt.example.com"
 #define MQTT_BROKER_PORT 8883  // TLS port
 #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
+#define MQTT_DEFAULT_TOPIC "P1M5/"
+// Production secret key for password generation (matches setup_auth.py)
 
 #endif

@@ -17,11 +17,11 @@ void MQTTClient::begin(Preferences& prefs, const String& devId, const String& se
   deviceId = devId;
   secretKey = secKey;
   
-  // Load config from NVS
+  // Load config from NVS with defaults for mqtt.example.com
   config.host = prefs.getString("mqtt_host", MQTT_BROKER_HOST);
   config.port = prefs.getUShort("mqtt_port", DEFAULT_MQTT_PORT);
-  config.topic = prefs.getString("mqtt_topic", "");
-  config.username = prefs.getString("mqtt_username", deviceId);
+  config.topic = prefs.getString("mqtt_topic", MQTT_DEFAULT_TOPIC);
+  config.username = deviceId;  // Username is the P1 number (e.g., "P19D49B8")
   config.useTLS = prefs.getBool("mqtt_use_tls", true);
   
   // Determine if we should use TLS based on port
@@ -38,10 +38,13 @@ void MQTTClient::begin(Preferences& prefs, const String& devId, const String& se
   
   if (config.host.length() > 0) {
     client->setServer(config.host.c_str(), config.port);
+    // Increase buffer size to handle large JSON payloads (default is only 256 bytes)
+    client->setBufferSize(4096);
     LOG_INFO(MODULE_MQTT, "MQTT configured:");
     LOG_INFO(MODULE_MQTT, "  Host: %s:%d", config.host.c_str(), config.port);
     LOG_INFO(MODULE_MQTT, "  Topic: %s", config.topic.c_str());
     LOG_INFO(MODULE_MQTT, "  TLS: %s", useSecure ? "Yes" : "No");
+    LOG_INFO(MODULE_MQTT, "  Buffer: 4096 bytes");
   } else {
     LOG_WARN(MODULE_MQTT, "MQTT not configured");
   }
@@ -94,7 +97,19 @@ bool MQTTClient::isConnected() {
 
 void MQTTClient::publish(const String& topic, const String& payload) {
   if (client && client->connected() && topic.length() > 0) {
-    String fullTopic = config.topic.length() > 0 ? config.topic + "/" + topic : topic;
+    // topic should be the full path including device ID (e.g., "P1834378/data/readings")
+    // config.topic is the base prefix (e.g., "P1M5/" or "P1M5")
+    String fullTopic;
+    if (config.topic.length() > 0) {
+      // Check if config.topic already ends with "/"
+      if (config.topic.endsWith("/")) {
+        fullTopic = config.topic + topic;
+      } else {
+        fullTopic = config.topic + "/" + topic;
+      }
+    } else {
+      fullTopic = topic;
+    }
     bool result = client->publish(fullTopic.c_str(), payload.c_str());
     if (!result) {
       LOG_WARN(MODULE_MQTT, "Failed to publish to %s", fullTopic.c_str());
@@ -124,6 +139,7 @@ void MQTTClient::setConfig(const MQTTConfig& newConfig) {
       client = new PubSubClient(wifiClientPlain);
     }
     client->setServer(config.host.c_str(), config.port);
+    client->setBufferSize(4096);
   }
 }
 

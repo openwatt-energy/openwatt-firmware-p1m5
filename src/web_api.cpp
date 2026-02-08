@@ -151,6 +151,88 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     request->send(200, "application/json", response);
   });
   
+  // GET /api/v1/data - Home Assistant compatible energy data endpoint
+  server.on("/api/v1/data", HTTP_GET, [](AsyncWebServerRequest *request){
+    const P1Data& d = WebAPI::latestData;
+    JsonDocument doc;
+    
+    // WiFi information
+    if (WiFiManager::isConnected()) {
+      doc["wifi_ssid"] = WiFi.SSID();
+      // Convert RSSI to percentage (approximate)
+      int rssi = WiFi.RSSI();
+      int strength = 0;
+      if (rssi >= -50) strength = 100;
+      else if (rssi <= -100) strength = 0;
+      else strength = 2 * (rssi + 100);
+      doc["wifi_strength"] = strength;
+    } else {
+      doc["wifi_ssid"] = "";
+      doc["wifi_strength"] = 0;
+    }
+    
+    // SMR version - derive from meter model if available
+    if (d.meterModel.indexOf("SMR") >= 0 || d.meterModel.indexOf("50") >= 0) {
+      doc["smr_version"] = 50;
+    } else {
+      doc["smr_version"] = 40;  // Default to 4.0 if unknown
+    }
+    
+    // Meter information
+    doc["meter_model"] = d.meterModel;
+    doc["unique_id"] = d.equipmentId;
+    
+    // Tariff
+    doc["active_tariff"] = d.tariffIndicator;
+    
+    // Energy totals (kWh)
+    doc["total_power_import_kwh"] = d.consumptionT1 + d.consumptionT2 + d.consumptionT3 + d.consumptionT4 + d.consumptionT5;
+    doc["total_power_import_t1_kwh"] = d.consumptionT1;
+    doc["total_power_import_t2_kwh"] = d.consumptionT2;
+    doc["total_power_export_kwh"] = d.productionT1 + d.productionT2 + d.productionT3 + d.productionT4 + d.productionT5;
+    doc["total_power_export_t1_kwh"] = d.productionT1;
+    doc["total_power_export_t2_kwh"] = d.productionT2;
+    
+    // Active power (convert kW to W)
+    doc["active_power_w"] = d.powerConsumed * 1000;
+    doc["active_power_l1_w"] = d.powerImportL1 * 1000;
+    doc["active_power_l2_w"] = d.powerImportL2 * 1000;
+    doc["active_power_l3_w"] = d.powerImportL3 * 1000;
+    
+    // Voltage and current
+    doc["active_voltage_l1_v"] = d.voltageL1;
+    doc["active_voltage_l2_v"] = d.voltageL2;
+    doc["active_voltage_l3_v"] = d.voltageL3;
+    doc["active_current_l1_a"] = d.currentL1;
+    doc["active_current_l2_a"] = d.currentL2;
+    doc["active_current_l3_a"] = d.currentL3;
+    
+    // Average and peak power
+    doc["active_power_average_w"] = d.avgDemand * 1000;
+    doc["montly_power_peak_w"] = d.maxDemandMonth * 1000;
+    
+    // Parse monthly peak timestamp from DSMR format (YYMMDDhhmmss) to timestamp
+    if (d.maxDemandTimestamp.length() >= 12) {
+      // Convert YYMMDDhhmmss to YYYYMMDDhhmmss format
+      String ts = d.maxDemandTimestamp;
+      if (ts.length() == 12) {  // YYMMDDhhmmss
+        int year = ts.substring(0, 2).toInt();
+        year += (year >= 50) ? 1900 : 2000;  // Assume 50+ = 1900s, <50 = 2000s
+        ts = String(year) + ts.substring(2);
+      }
+      doc["montly_power_peak_timestamp"] = ts;
+    } else {
+      doc["montly_power_peak_timestamp"] = "";
+    }
+    
+    // External devices array (empty for now)
+    JsonArray external = doc["external"].to<JsonArray>();
+    
+    String response;
+    serializeJson(doc, response);
+    request->send(200, "application/json", response);
+  });
+  
   // GET /api/meter/raw - Raw P1 telegram as plain text
   server.on("/api/meter/raw", HTTP_GET, [](AsyncWebServerRequest *request){
     String raw = P1Reader::getLastRawTelegram();
@@ -397,6 +479,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["trigger_pin"] = 25;
     doc["baud_rate"] = 115200;
     doc["bytes_received"] = P1Reader::getBytesReceived();
+    doc["telegram_count"] = P1Reader::getTelegramCount();
     doc["meter_connected"] = P1Reader::isConnected();
     doc["last_telegram"] = P1Reader::getLastRawTelegram();
     

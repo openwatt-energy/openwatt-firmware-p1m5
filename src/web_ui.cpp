@@ -10,7 +10,7 @@ String getWebPage(const String& path) {
     html += "<script src=https://cdn.tailwindcss.com></script>";
     html += "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap\" rel=stylesheet>";
     html += "<style>body{font-family:Inter,system-ui,sans-serif}</style>";
-    html += "<script>tailwind.config={theme:{extend:{colors:{primary:{50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8'}}}}}}</script>";
+    html += "<script>tailwind.config={theme:{extend:{colors:{primary:{50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8'}}}}}</script>";
     html += "</head><body class=bg-gray-50 text-gray-900 min-h-screen>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
