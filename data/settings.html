@@ -1,34 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings - OpenWatt P1 Reader</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: #f5f5f5;
       color: #333;
       line-height: 1.6;
     }
-    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
     header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 2rem;
       border-radius: 10px;
       margin-bottom: 2rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
     nav {
       background: white;
       padding: 1rem;
       border-radius: 10px;
       margin-bottom: 2rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
+
     nav a {
       display: inline-block;
       padding: 0.5rem 1rem;
@@ -38,33 +56,52 @@
       border-radius: 5px;
       transition: background 0.3s;
     }
-    nav a:hover, nav a.active { background: #667eea; color: white; }
+
+    nav a:hover,
+    nav a.active {
+      background: #667eea;
+      color: white;
+    }
+
     .card {
       background: white;
       padding: 1.5rem;
       border-radius: 10px;
       margin-bottom: 1.5rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    .card h2 { margin-bottom: 1rem; color: #667eea; }
-    .form-group { margin-bottom: 1rem; }
+
+    .card h2 {
+      margin-bottom: 1rem;
+      color: #667eea;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
     .form-group label {
       display: block;
       margin-bottom: 0.5rem;
       font-weight: 600;
       color: #555;
     }
-    .form-group input, .form-group select {
+
+    .form-group input,
+    .form-group select {
       width: 100%;
       padding: 0.75rem;
       border: 1px solid #ddd;
       border-radius: 5px;
       font-size: 1rem;
     }
-    .form-group input:focus, .form-group select:focus {
+
+    .form-group input:focus,
+    .form-group select:focus {
       outline: none;
       border-color: #667eea;
     }
+
     .btn {
       display: inline-block;
       padding: 0.75rem 1.5rem;
@@ -76,15 +113,52 @@
       font-size: 1rem;
       transition: background 0.3s;
     }
-    .btn:hover { background: #5568d3; }
-    .btn:disabled { background: #ccc; cursor: not-allowed; }
-    .success { background: #d4edda; color: #155724; padding: 1rem; border-radius: 5px; margin: 1rem 0; }
-    .error { background: #fee; color: #c33; padding: 1rem; border-radius: 5px; margin: 1rem 0; }
-    .wifi-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 0.5rem; }
-    .wifi-item { padding: 0.5rem; cursor: pointer; border-radius: 3px; }
-    .wifi-item:hover { background: #f0f0f0; }
+
+    .btn:hover {
+      background: #5568d3;
+    }
+
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+      padding: 1rem;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 1rem;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+
+    .wifi-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 0.5rem;
+    }
+
+    .wifi-item {
+      padding: 0.5rem;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    .wifi-item:hover {
+      background: #f0f0f0;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -169,7 +243,7 @@
         .then(data => {
           const listEl = document.getElementById('wifiList');
           if (data.networks && data.networks.length > 0) {
-            listEl.innerHTML = data.networks.map(net => 
+            listEl.innerHTML = data.networks.map(net =>
               `<div class="wifi-item" onclick="selectWiFi('${net.ssid}')">${net.ssid} (${net.rssi} dBm)</div>`
             ).join('');
             listEl.style.display = 'block';
@@ -196,20 +270,20 @@
           password: document.getElementById('wifiPassword').value
         }
       };
-      
+
       fetch('/api/config/wifi', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
-      .then(r => r.json())
-      .then(data => {
-        showMessage('WiFi settings saved! Device will restart...');
-        setTimeout(() => window.location.href = '/', 2000);
-      })
-      .catch(e => {
-        showMessage('Error saving WiFi settings: ' + e.message, true);
-      });
+        .then(r => r.json())
+        .then(data => {
+          showMessage('WiFi settings saved! Device will restart...');
+          setTimeout(() => window.location.href = '/', 2000);
+        })
+        .catch(e => {
+          showMessage('Error saving WiFi settings: ' + e.message, true);
+        });
     });
 
     document.getElementById('mqttForm').addEventListener('submit', (e) => {
@@ -221,21 +295,21 @@
           topic: document.getElementById('mqttTopic').value
         }
       };
-      
+
       fetch('/api/config/mqtt', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
-      .then(r => r.json())
-      .then(data => {
-        showMessage('MQTT settings saved!');
-      })
-      .catch(e => {
-        showMessage('Error saving MQTT settings: ' + e.message, true);
-      });
+        .then(r => r.json())
+        .then(data => {
+          showMessage('MQTT settings saved!');
+        })
+        .catch(e => {
+          showMessage('Error saving MQTT settings: ' + e.message, true);
+        });
     });
   </script>
 </body>
-</html>
 
+</html>

@@ -1,18 +1,17 @@
 # Wokwi configuration for ESP32 simulation
-# Use with: https://wokwi.com or VS Code Wokwi extension
+# Use with: https://wokwi.com or VS Code Wokwi extension (F1 > Wokwi: Start Simulator)
+# Build first: python3 -m platformio run -e m5stack-core-esp32
 
 [wokwi]
 version = 1
 firmware = ".pio/build/m5stack-core-esp32/firmware.elf"
+elf = ".pio/build/m5stack-core-esp32/firmware.elf"
 
-# Note: This is a basic config - Wokwi can simulate:
-# - WiFi networks
-# - UART/Serial communication  
-# - GPIO pins
-# - Basic timing
-#
-# Limitations:
-# - Watchdog behavior may differ
-# - Pin conflicts might not be detected
-# - Real-time timing won't match hardware exactly
+# Forward host port to ESP32 so we can hit the web UI and API from tests
+[[net.forward]]
+from = "localhost:8080"
+to = "target:80"
+
+# Optional: RFC2217 serial on port 4000 for scripted serial access
+rfc2217ServerPort = 4000
 
