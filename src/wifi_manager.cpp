@@ -102,10 +102,13 @@ WiFiConfig WiFiManager::loadCredentials(Preferences& prefs) {
   config.ssid = prefs.getString(PREFS_KEY_WIFI_SSID, "");
   config.password = prefs.getString(PREFS_KEY_WIFI_PASS, "");
   
-  // If not found, try Xenn format (wifi-settings namespace with string keys)
+  // If not found, try Xenn format (xenn namespace with string keys)
   if (config.ssid.length() == 0) {
+    SerialConsole::println("WiFi: Trying to load from Xenn format (xenn namespace)...");
     nvs_handle_t h;
-    if (nvs_open("wifi-settings", NVS_READONLY, &h) == ESP_OK) {
+    esp_err_t err = nvs_open("xenn", NVS_READONLY, &h);
+    if (err == ESP_OK) {
+      SerialConsole::println("WiFi: Opened xenn namespace successfully");
       size_t len = 0;
       
       // Try "wifi_ssid" key first (prefixed format)
@@ -161,7 +164,11 @@ WiFiConfig WiFiManager::loadCredentials(Preferences& prefs) {
       if (config.ssid.length() > 0) {
         saveCredentials(prefs, config.ssid, config.password);
         SerialConsole::println("WiFi: Migrated Xenn credentials to new format");
+      } else {
+        SerialConsole::println("WiFi: No SSID found in Xenn format");
       }
+    } else {
+      SerialConsole::println("WiFi: Failed to open wifi-settings namespace, err=" + String(err));
     }
   }
   
