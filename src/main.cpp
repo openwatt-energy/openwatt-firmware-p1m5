@@ -284,7 +284,7 @@ void publishToMQTT(const P1Data& data) {
   MQTTClient::publish(topic, jsonString);
 }
 
-// Publish device status (firmware version, etc.) periodically
+// Publish device status (config log format - Xenn compatible)
 void publishMQTTStatus() {
   if (!MQTTClient::isConnected()) {
     return;
@@ -292,27 +292,47 @@ void publishMQTTStatus() {
   
   JsonDocument doc;
   
-  // Device info
+  // Generate UUID for message ID
+  doc["id"] = generateUUID();
+  
+  // Device identification (Xenn format)
   doc["dongle_id"] = state.deviceId;
-  doc["fw_ver"] = FIRMWARE_VERSION;
+  doc["friendly_name"] = "Config log";
+  doc["sensorId"] = "config";
   doc["timestamp"] = millis() / 1000;
+  doc["hostname"] = state.deviceId;
   
-  // Connection status
-  doc["wifi_connected"] = WiFiManager::isConnected();
-  doc["mqtt_connected"] = true;  // We know it's connected if we're here
-  doc["meter_connected"] = P1Reader::isConnected();
+  // System stats
+  static int rebootCount = 0;  // Could be stored in NVS
+  doc["reboots"] = rebootCount;
+  doc["uptime"] = millis() / 1000;  // seconds
+  doc["dongle_ip"] = WiFiManager::getIP();
+  doc["fw_ver"] = FIRMWARE_VERSION;
   
-  // Uptime
-  doc["uptime_ms"] = millis();
+  // Throttle setting (configurable)
+  doc["rtl_throttle"] = 5;  // Default throttle value
+  
+  // User config (from NVS if available)
+  doc["email"] = "";  // Could be loaded from NVS
+  
+  // MQTT config
+  MQTTConfig mqttCfg = MQTTClient::getConfig();
+  doc["mqtt_host"] = mqttCfg.host;
+  doc["mqtt_port"] = String(mqttCfg.port);
+  doc["mqtt_user"] = state.deviceId;
+  doc["mqtt_pfix"] = mqttCfg.topic + state.deviceId;
+  
+  // WiFi config
+  doc["wifi_ssid"] = WiFiManager::getConnectedSSID();
   
   String jsonString;
   serializeJson(doc, jsonString);
   
-  // Publish to status topic
-  String topic = state.deviceId + "/sys/status";
+  // Publish to config topic (Xenn compatible)
+  String topic = state.deviceId + "/sys/config";
   MQTTClient::publish(topic, jsonString);
   
-  SerialConsole::println("MQTT: Published status: fw=" + String(FIRMWARE_VERSION));
+  SerialConsole::println("MQTT: Published config: fw=" + String(FIRMWARE_VERSION));
 }
 #else
 void publishToMQTT(const P1Data& data) {

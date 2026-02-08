@@ -20,6 +20,7 @@ public:
   static bool isConnected();
   static String getIP();
   static String getAPIP();
+  static String getConnectedSSID();
   static void saveCredentials(Preferences& prefs, const String& ssid, const String& password);
   /** Prefer this when you have raw buffers (avoids String lifetime issues). */
   static void saveCredentials(Preferences& prefs, const char* ssid, const char* password);

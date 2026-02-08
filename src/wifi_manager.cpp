@@ -70,6 +70,13 @@ String WiFiManager::getAPIP() {
   return WiFi.softAPIP().toString();
 }
 
+String WiFiManager::getConnectedSSID() {
+  if (WiFi.status() == WL_CONNECTED) {
+    return WiFi.SSID();
+  }
+  return "";
+}
+
 void WiFiManager::saveCredentials(Preferences& prefs, const String& ssid, const String& password) {
   saveCredentials(prefs, ssid.c_str(), password.c_str());
 }
