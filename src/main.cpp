@@ -188,6 +188,27 @@ void publishToMQTT(const P1Data& data) {
   t1_8_2["value"] = data.consumptionT2;
   t1_8_2["unit"] = "kWh";
   
+  // Energy consumption T3 (optional - may not be present on all meters)
+  if (data.consumptionT3 > 0) {
+    JsonObject t1_8_3 = doc["1-0:1.8.3"].to<JsonObject>();
+    t1_8_3["value"] = data.consumptionT3;
+    t1_8_3["unit"] = "kWh";
+  }
+  
+  // Energy consumption T4 (optional - may not be present on all meters)
+  if (data.consumptionT4 > 0) {
+    JsonObject t1_8_4 = doc["1-0:1.8.4"].to<JsonObject>();
+    t1_8_4["value"] = data.consumptionT4;
+    t1_8_4["unit"] = "kWh";
+  }
+  
+  // Energy consumption T5 (optional - may not be present on all meters)
+  if (data.consumptionT5 > 0) {
+    JsonObject t1_8_5 = doc["1-0:1.8.5"].to<JsonObject>();
+    t1_8_5["value"] = data.consumptionT5;
+    t1_8_5["unit"] = "kWh";
+  }
+  
   // Active power export
   JsonObject t2_7_0 = doc["1-0:2.7.0"].to<JsonObject>();
   t2_7_0["value"] = data.powerProduced;
@@ -202,6 +223,27 @@ void publishToMQTT(const P1Data& data) {
   JsonObject t2_8_2 = doc["1-0:2.8.2"].to<JsonObject>();
   t2_8_2["value"] = data.productionT2;
   t2_8_2["unit"] = "kWh";
+  
+  // Energy production T3 (optional - may not be present on all meters)
+  if (data.productionT3 > 0) {
+    JsonObject t2_8_3 = doc["1-0:2.8.3"].to<JsonObject>();
+    t2_8_3["value"] = data.productionT3;
+    t2_8_3["unit"] = "kWh";
+  }
+  
+  // Energy production T4 (optional - may not be present on all meters)
+  if (data.productionT4 > 0) {
+    JsonObject t2_8_4 = doc["1-0:2.8.4"].to<JsonObject>();
+    t2_8_4["value"] = data.productionT4;
+    t2_8_4["unit"] = "kWh";
+  }
+  
+  // Energy production T5 (optional - may not be present on all meters)
+  if (data.productionT5 > 0) {
+    JsonObject t2_8_5 = doc["1-0:2.8.5"].to<JsonObject>();
+    t2_8_5["value"] = data.productionT5;
+    t2_8_5["unit"] = "kWh";
+  }
   
   // Power import L1
   JsonObject t21_7_0 = doc["1-0:21.7.0"].to<JsonObject>();

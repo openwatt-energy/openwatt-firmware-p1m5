@@ -189,9 +189,18 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["total_power_import_kwh"] = d.consumptionT1 + d.consumptionT2 + d.consumptionT3 + d.consumptionT4 + d.consumptionT5;
     doc["total_power_import_t1_kwh"] = d.consumptionT1;
     doc["total_power_import_t2_kwh"] = d.consumptionT2;
+    // Optional tariff periods (only include if present)
+    if (d.consumptionT3 > 0) doc["total_power_import_t3_kwh"] = d.consumptionT3;
+    if (d.consumptionT4 > 0) doc["total_power_import_t4_kwh"] = d.consumptionT4;
+    if (d.consumptionT5 > 0) doc["total_power_import_t5_kwh"] = d.consumptionT5;
+    
     doc["total_power_export_kwh"] = d.productionT1 + d.productionT2 + d.productionT3 + d.productionT4 + d.productionT5;
     doc["total_power_export_t1_kwh"] = d.productionT1;
     doc["total_power_export_t2_kwh"] = d.productionT2;
+    // Optional production tariff periods (only include if present)
+    if (d.productionT3 > 0) doc["total_power_export_t3_kwh"] = d.productionT3;
+    if (d.productionT4 > 0) doc["total_power_export_t4_kwh"] = d.productionT4;
+    if (d.productionT5 > 0) doc["total_power_export_t5_kwh"] = d.productionT5;
     
     // Active power (convert kW to W)
     doc["active_power_w"] = d.powerConsumed * 1000;
