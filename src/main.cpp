@@ -354,6 +354,12 @@ void onP1DataReceived(const P1Data& data) {
   if (data.productionT2 > 0) latestData.productionT2 = data.productionT2;
   if (data.powerConsumed > 0) latestData.powerConsumed = data.powerConsumed;
   if (data.powerProduced > 0) latestData.powerProduced = data.powerProduced;
+  if (data.powerImportL1 >= 0) latestData.powerImportL1 = data.powerImportL1;
+  if (data.powerImportL2 >= 0) latestData.powerImportL2 = data.powerImportL2;
+  if (data.powerImportL3 >= 0) latestData.powerImportL3 = data.powerImportL3;
+  if (data.powerExportL1 >= 0) latestData.powerExportL1 = data.powerExportL1;
+  if (data.powerExportL2 >= 0) latestData.powerExportL2 = data.powerExportL2;
+  if (data.powerExportL3 >= 0) latestData.powerExportL3 = data.powerExportL3;
   if (data.avgDemand > 0) latestData.avgDemand = data.avgDemand;
   if (data.maxDemandMonth > 0) latestData.maxDemandMonth = data.maxDemandMonth;
   if (data.maxDemand13M > 0) latestData.maxDemand13M = data.maxDemand13M;
