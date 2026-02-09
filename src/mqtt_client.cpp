@@ -17,12 +17,24 @@ void MQTTClient::begin(Preferences& prefs, const String& devId, const String& se
   deviceId = devId;
   secretKey = secKey;
   
-  // Load config from NVS with defaults for mqtt.example.com
-  config.host = prefs.getString("mqtt_host", MQTT_BROKER_HOST);
-  config.port = prefs.getUShort("mqtt_port", DEFAULT_MQTT_PORT);
-  config.topic = prefs.getString("mqtt_topic", MQTT_DEFAULT_TOPIC);
+  // Force production MQTT settings and save to NVS
+  config.host = MQTT_BROKER_HOST;  // mqtt.example.com
+  config.port = MQTT_BROKER_PORT;  // 8883
+  config.topic = MQTT_DEFAULT_TOPIC;  // P1M5/
   config.username = deviceId;  // Username is the P1 number (e.g., "P19D49B8")
-  config.useTLS = prefs.getBool("mqtt_use_tls", true);
+  config.useTLS = true;  // Always use TLS on port 8883
+  
+  // Save forced settings to NVS for persistence
+  prefs.putString("mqtt_host", config.host);
+  prefs.putUShort("mqtt_port", config.port);
+  prefs.putString("mqtt_topic", config.topic);
+  prefs.putBool("mqtt_use_tls", config.useTLS);
+  prefs.putString("mqtt_username", config.username);
+  
+  LOG_INFO(MODULE_MQTT, "MQTT settings saved to NVS:");
+  LOG_INFO(MODULE_MQTT, "  Host: %s", config.host.c_str());
+  LOG_INFO(MODULE_MQTT, "  Port: %d", config.port);
+  LOG_INFO(MODULE_MQTT, "  Topic: %s", config.topic.c_str());
   
   // Determine if we should use TLS based on port
   useSecure = (config.port == 8883) || config.useTLS;

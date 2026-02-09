@@ -280,7 +280,8 @@ void publishToMQTT(const P1Data& data) {
   serializeJson(doc, jsonString);
   
   // Publish to device-specific topic: P1M5/<device_id>/data/readings
-  String topic = state.deviceId + "/data/readings";
+  MQTTConfig mqttCfg = MQTTClient::getConfig();
+  String topic = mqttCfg.topic + state.deviceId + "/data/readings";
   MQTTClient::publish(topic, jsonString);
 }
 
