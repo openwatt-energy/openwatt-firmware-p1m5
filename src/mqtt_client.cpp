@@ -81,6 +81,14 @@ void MQTTClient::reconnect() {
     return;
   }
   
+  // Rate limit reconnection attempts (max once every 10 seconds)
+  static unsigned long lastReconnectAttempt = 0;
+  unsigned long now = millis();
+  if (now - lastReconnectAttempt < 10000) {
+    return;
+  }
+  lastReconnectAttempt = now;
+  
   if (!client->connected()) {
     LOG_INFO(MODULE_MQTT, "Attempting MQTT connection to %s:%d...", config.host.c_str(), config.port);
     
