@@ -418,10 +418,13 @@ void broadcastToWebSocket(const P1Data& data) {
   doc["1-0:1.8.2"] = data.consumptionT2;
   doc["1-0:2.8.2"] = data.productionT2;
   
-  // Instantaneous power (kW)
+  // Instantaneous power (kW) - total and per-phase
   doc["1-0:1.7.0"] = data.powerConsumed;
   doc["1-0:2.7.0"] = data.powerProduced;
   doc["1-0:1.4.0"] = data.avgDemand;
+  doc["1-0:21.7.0"] = data.powerImportL1;  // L1 import
+  doc["1-0:41.7.0"] = data.powerImportL2;  // L2 import
+  doc["1-0:61.7.0"] = data.powerImportL3;  // L3 import
   
   // Demand history
   doc["1-0:1.6.0"] = data.maxDemandMonth;
