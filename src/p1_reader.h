@@ -62,6 +62,7 @@ struct P1Data {
   float currentL1 = 0.0;  // 1-0:31.7.0
   float currentL2 = 0.0;  // 1-0:51.7.0
   float currentL3 = 0.0;  // 1-0:71.7.0
+  float currentTotal = 0.0;  // Sum of L1+L2+L3
   
   // Switch position
   int switchPosition = 0;  // 0-0:96.3.10

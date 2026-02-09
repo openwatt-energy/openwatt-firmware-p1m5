@@ -206,6 +206,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["active_current_l1_a"] = d.currentL1;
     doc["active_current_l2_a"] = d.currentL2;
     doc["active_current_l3_a"] = d.currentL3;
+    doc["active_current_a"] = d.currentTotal;
     
     // Average and peak power
     doc["active_power_average_w"] = d.avgDemand * 1000;

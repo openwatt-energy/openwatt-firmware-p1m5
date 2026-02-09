@@ -361,6 +361,12 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
     }
   }
   
+  // Calculate total current from individual phases
+  data.currentTotal = data.currentL1 + data.currentL2 + data.currentL3;
+  if (data.currentTotal > 0) {
+    SerialConsole::println("  -> Total Current: " + String(data.currentTotal) + " A");
+  }
+  
   // Validate we got at least some data - be lenient for Fluvius meters
   bool hasAnyData = (data.equipmentId.length() > 0 || data.timestamp.length() > 0 ||
                      data.consumptionT1 > 0 || data.consumptionT2 > 0 || 
