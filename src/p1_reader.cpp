@@ -229,16 +229,6 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       data.avgDemand = extractFloatValue(line);
       SerialConsole::println("  -> Avg Demand: " + String(data.avgDemand));
     }
-    else if (line.indexOf("1-0:1.6.0(") != -1) {
-      // Format: 1-0:1.6.0(00.010*kW)(251016170000)
-      // Extract first value (before second parenthesis)
-      int firstParen = line.indexOf('(');
-      int firstStar = line.indexOf('*', firstParen);
-      if (firstParen != -1 && firstStar != -1) {
-        String valueStr = line.substring(firstParen + 1, firstStar);
-        data.maxDemandMonth = valueStr.toFloat();
-      }
-    }
     else if (line.indexOf("0-0:98.1.0(") != -1) {
       data.maxDemand13M = extractFloatValue(line);
     }
@@ -326,20 +316,21 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       data.switchPosition = extractIntValue(line);
       SerialConsole::println("  -> Switch Position: " + String(data.switchPosition));
     }
-    // Max demand with timestamp (format: 1-0:1.6.0(timestamp)(value))
+    // Max demand with timestamp (format: 1-0:1.6.0(timestamp)(value*kW))
     else if (line.indexOf("1-0:1.6.0(") != -1) {
-      // Extract both timestamp and value
+      // Extract timestamp: between first '(' and first ')'
       int firstParen = line.indexOf('(');
-      int secondParen = line.indexOf('(', firstParen + 1);
-      int thirdParen = line.indexOf('(', secondParen + 1);
-      int starIdx = line.indexOf('*', thirdParen);
+      int firstClose = line.indexOf(')', firstParen);
+      // Extract value: between second '(' and '*' before 'kW'
+      int secondParen = line.indexOf('(', firstClose);
+      int starIdx = line.indexOf('*', secondParen);
       
-      if (firstParen != -1 && secondParen != -1) {
-        data.maxDemandTimestamp = line.substring(firstParen + 1, secondParen);
+      if (firstParen != -1 && firstClose != -1) {
+        data.maxDemandTimestamp = line.substring(firstParen + 1, firstClose);
         SerialConsole::println("  -> Max Demand Timestamp: " + data.maxDemandTimestamp);
       }
-      if (thirdParen != -1 && starIdx != -1) {
-        String valueStr = line.substring(thirdParen + 1, starIdx);
+      if (secondParen != -1 && starIdx != -1) {
+        String valueStr = line.substring(secondParen + 1, starIdx);
         data.maxDemandMonth = valueStr.toFloat();
         SerialConsole::println("  -> Max Demand Value: " + String(data.maxDemandMonth) + " kW");
       }
