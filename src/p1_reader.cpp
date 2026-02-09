@@ -285,11 +285,19 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       data.currentL3 = extractFloatValue(line);
       SerialConsole::println("  -> Current L3: " + String(data.currentL3) + " A");
     }
+    // Total power
+    else if (line.indexOf("1-0:1.7.0(") != -1) {
+      data.powerConsumed = extractFloatValue(line);
+      SerialConsole::println("  -> Total Import: " + String(data.powerConsumed) + " kW");
+    }
+    else if (line.indexOf("1-0:2.7.0(") != -1) {
+      data.powerProduced = extractFloatValue(line);
+      SerialConsole::println("  -> Total Export: " + String(data.powerProduced) + " kW");
+    }
     // Power readings (3 phases) - ISk5/Fluvius specific
     else if (line.indexOf("1-0:61.7.0(") != -1) {
-      data.powerTotal = extractFloatValue(line);
-      data.powerImportL3 = data.powerTotal;  // 61.7.0 is phase 3 import
-      SerialConsole::println("  -> Total Power: " + String(data.powerTotal) + " kW");
+      data.powerImportL3 = extractFloatValue(line);  // L3 import
+      SerialConsole::println("  -> Power Import L3: " + String(data.powerImportL3) + " kW");
     }
     // Power import per phase (kW)
     else if (line.indexOf("1-0:21.7.0(") != -1) {
