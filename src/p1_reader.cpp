@@ -24,9 +24,14 @@ static bool p1SerialInitDone = false;
 
 static float extractFloatValue(const String& line) {
   int startIdx = line.indexOf('(');
-  int endIdx = line.indexOf('*');
+  int endIdx = line.indexOf('*');  // Try to find unit separator first
   
-  if (startIdx == -1 || endIdx == -1) {
+  // If no unit separator, look for closing parenthesis
+  if (endIdx == -1) {
+    endIdx = line.indexOf(')');
+  }
+  
+  if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx) {
     return 0.0;
   }
   
