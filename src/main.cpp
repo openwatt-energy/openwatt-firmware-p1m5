@@ -380,6 +380,7 @@ void onP1DataReceived(const P1Data& data) {
   if (data.currentL1 >= 0) latestData.currentL1 = data.currentL1;
   if (data.currentL2 >= 0) latestData.currentL2 = data.currentL2;
   if (data.currentL3 >= 0) latestData.currentL3 = data.currentL3;
+  if (data.currentTotal >= 0) latestData.currentTotal = data.currentTotal;
   
   // Switch position
   if (data.switchPosition >= 0) latestData.switchPosition = data.switchPosition;

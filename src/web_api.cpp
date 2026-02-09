@@ -208,9 +208,10 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["active_current_l3_a"] = d.currentL3;
     doc["active_current_a"] = d.currentTotal;
     
-    // Average and peak power
+    // Average and peak power (keep misspelled "montly" for compatibility)
     doc["active_power_average_w"] = d.avgDemand * 1000;
     doc["montly_power_peak_w"] = d.maxDemandMonth * 1000;
+    doc["monthly_power_peak_w"] = d.maxDemandMonth * 1000;  // Correct spelling
     
     // Parse monthly peak timestamp from DSMR format (YYMMDDhhmmss) to timestamp
     if (d.maxDemandTimestamp.length() >= 12) {
@@ -221,9 +222,11 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
         year += (year >= 50) ? 1900 : 2000;  // Assume 50+ = 1900s, <50 = 2000s
         ts = String(year) + ts.substring(2);
       }
-      doc["montly_power_peak_timestamp"] = ts;
+      doc["montly_power_peak_timestamp"] = ts;  // Keep for compatibility
+      doc["monthly_power_peak_timestamp"] = ts;  // Correct spelling
     } else {
       doc["montly_power_peak_timestamp"] = "";
+      doc["monthly_power_peak_timestamp"] = "";
     }
     
     // External devices array (empty for now)
