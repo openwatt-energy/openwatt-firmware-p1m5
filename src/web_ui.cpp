@@ -119,19 +119,21 @@ String getOnlineCSS() {
     "<style>body{font-family:'Inter',system-ui,sans-serif}</style>";
 }
 
-// Detect if device is in online mode (WiFi connected) or offline/AP mode
+// Detect if device is in online mode (WiFi connected to upstream network)
 bool isOnlineMode() {
-  // Check if we're connected to WiFi (not just in AP mode)
-  return (WiFi.status() == WL_CONNECTED) && (WiFi.getMode() != WIFI_AP);
+  // Check if STA mode is connected to an upstream WiFi network
+  // Note: AP mode (192.168.4.1) is NOT "online" - it's just serving local AP
+  return (WiFi.status() == WL_CONNECTED) && 
+         (WiFi.getMode() & WIFI_STA) && 
+         !(WiFi.getMode() & WIFI_AP);
 }
 
 // Get appropriate CSS based on connectivity mode
+// ALWAYS use offline CSS for reliability - device should never depend on external CDN
 String getThemeCSS() {
-  if (isOnlineMode()) {
-    return getOnlineCSS();
-  } else {
-    return getOfflineCSS();
-  }
+  // Always use offline CSS for reliability
+  // Online mode detection can be unreliable and CDN may not be accessible
+  return getOfflineCSS();
 }
 
 // Legacy function name for backward compatibility - redirects to getOfflineCSS
@@ -147,14 +149,11 @@ String getWebPage(const String& path) {
   logo += "<path fill=\"white\" d=\"M28 12l-12 16h8l-4 16 16-20h-8l4-12z\" />";
   logo += "</svg>";
   
-  // Use theme CSS based on connectivity mode (online = CDN, offline = embedded)
+  // Use theme CSS - always offline CSS for reliability
   String themeCSS = getThemeCSS();
   
-  // Add offline mode banner if in AP mode
-  String offlineBanner = "";
-  if (!isOnlineMode()) {
-    offlineBanner = "<div class=\"offline-mode\"><strong>Offline Mode:</strong> Limited styling available. Connect to WiFi for enhanced interface.</div>";
-  }
+  // Note: We always use offline CSS to ensure the UI works regardless of connectivity
+  // This ensures the device web interface is always functional
   
   if (path == "/" || path == "/index.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
