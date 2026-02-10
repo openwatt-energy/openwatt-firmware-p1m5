@@ -1,13 +1,17 @@
 #include "web_ui.h"
 
-// Embedded minimal CSS for offline functionality
-String getEmbeddedCSS() {
+// Include WiFi header for status checking
+#include <WiFi.h>
+
+// Embedded minimal CSS for offline/AP mode (when no internet connectivity)
+// This is a compact, self-contained stylesheet that works without external dependencies
+String getOfflineCSS() {
   return "<style>"
     /* CSS Reset and Base */
     "*{box-sizing:border-box;margin:0;padding:0}"
     "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f9fafb;color:#111827;line-height:1.5;min-height:100vh}"
     
-    /* Layout */
+    /* Layout - Minimal but functional */
     ".max-w-7xl{max-width:80rem;margin:0 auto;padding:0 1rem}"
     ".max-w-3xl{max-width:48rem;margin:0 auto;padding:0 1rem}"
     ".mx-auto{margin-left:auto;margin-right:auto}"
@@ -102,7 +106,37 @@ String getEmbeddedCSS() {
     ".alert-success{background:#ecfdf5;color:#065f46}"
     ".alert-error{background:#fef2f2;color:#991b1b}"
     ".alert-info{background:#eff6ff;color:#1e40af}"
+    
+    /* Offline mode indicator */
+    ".offline-mode{background:#fef3c7;border:1px solid #f59e0b;padding:0.75rem;border-radius:0.5rem;margin-bottom:1rem;color:#92400e}"
     "</style>";
+}
+
+// Online CSS - Loads Tailwind CSS from CDN for full styling when internet is available
+String getOnlineCSS() {
+  return "<link href=\"https://cdn.tailwindcss.com\" rel=\"stylesheet\">"
+    "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap\" rel=\"stylesheet\">"
+    "<style>body{font-family:'Inter',system-ui,sans-serif}</style>";
+}
+
+// Detect if device is in online mode (WiFi connected) or offline/AP mode
+bool isOnlineMode() {
+  // Check if we're connected to WiFi (not just in AP mode)
+  return (WiFi.status() == WL_CONNECTED) && (WiFi.getMode() != WIFI_AP);
+}
+
+// Get appropriate CSS based on connectivity mode
+String getThemeCSS() {
+  if (isOnlineMode()) {
+    return getOnlineCSS();
+  } else {
+    return getOfflineCSS();
+  }
+}
+
+// Legacy function name for backward compatibility - redirects to getOfflineCSS
+String getEmbeddedCSS() {
+  return getOfflineCSS();
 }
 
 String getWebPage(const String& path) {
@@ -113,13 +147,20 @@ String getWebPage(const String& path) {
   logo += "<path fill=\"white\" d=\"M28 12l-12 16h8l-4 16 16-20h-8l4-12z\" />";
   logo += "</svg>";
   
-  String commonCSS = getEmbeddedCSS();
+  // Use theme CSS based on connectivity mode (online = CDN, offline = embedded)
+  String themeCSS = getThemeCSS();
+  
+  // Add offline mode banner if in AP mode
+  String offlineBanner = "";
+  if (!isOnlineMode()) {
+    offlineBanner = "<div class=\"offline-mode\"><strong>Offline Mode:</strong> Limited styling available. Connect to WiFi for enhanced interface.</div>";
+  }
   
   if (path == "/" || path == "/index.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
     html += "<title>OpenWatt P1 Reader - Dashboard</title>";
-    html += commonCSS;
+    html += themeCSS;
     html += "</head><body>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
@@ -267,7 +308,7 @@ String getWebPage(const String& path) {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
     html += "<title>Live Data - OpenWatt</title>";
-    html += commonCSS;
+    html += themeCSS;
     html += "</head><body>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
@@ -309,7 +350,7 @@ String getWebPage(const String& path) {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
     html += "<title>Settings - OpenWatt</title>";
-    html += commonCSS;
+    html += themeCSS;
     html += "</head><body>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
@@ -359,7 +400,7 @@ String getWebPage(const String& path) {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
     html += "<title>System - OpenWatt</title>";
-    html += commonCSS;
+    html += themeCSS;
     html += "</head><body>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
     html += "<div class=\"max-w-7xl mx-auto px-4\"><div class=\"flex justify-between h-16\">";
