@@ -322,84 +322,99 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     }
   );
   
-  // GET /api/config/wifiscan - synchronous scan with proper STA initialization
+  // GET /api/config/wifiscan - robust synchronous scan with proper STA initialization
   server.on("/api/config/wifiscan", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
     JsonArray networks = doc["networks"].to<JsonArray>();
-
+    
     // Check current WiFi mode
     wifi_mode_t currentMode = WiFi.getMode();
     SerialConsole::println("WiFi scan: current mode=" + String(currentMode));
     
-    // Ensure we're in AP_STA mode (needed for scanning while maintaining AP)
-    if (currentMode != WIFI_AP_STA) {
-      SerialConsole::println("WiFi scan: switching to AP_STA mode...");
+    // If in pure AP mode (not AP_STA), we need to add STA capability for scanning
+    if (currentMode == WIFI_AP) {
+      SerialConsole::println("WiFi scan: switching from AP to AP_STA mode...");
       WiFi.mode(WIFI_AP_STA);
-      // Give STA interface time to initialize - needs longer on some ESP32 variants
+      // STA needs significant time to initialize on ESP32
+      delay(2000);
+    } else if (currentMode != WIFI_AP_STA) {
+      // Any other mode, ensure we're in AP_STA
+      SerialConsole::println("WiFi scan: ensuring AP_STA mode...");
+      WiFi.mode(WIFI_AP_STA);
+      delay(1500);
+    }
+    
+    // Check if we were connected and disconnect for clean scan
+    bool wasConnected = (WiFi.status() == WL_CONNECTED);
+    if (wasConnected) {
+      SerialConsole::println("WiFi scan: disconnecting from current network for clean scan");
+      WiFi.disconnect(true);  // true = wait for disconnect
       delay(1000);
     }
     
-    // Disconnect from any current network to ensure clean scan
-    if (WiFi.status() == WL_CONNECTED) {
-      SerialConsole::println("WiFi scan: disconnecting from current network for clean scan");
-      WiFi.disconnect(false);  // false = don't turn off WiFi
-      delay(500);
+    // Ensure STA interface is ready
+    // Try multiple times with increasing delays
+    int ready = 0;
+    for (int attempt = 0; attempt < 3 && !ready; attempt++) {
+      wl_status_t status = WiFi.status();
+      SerialConsole::println("WiFi scan: check " + String(attempt + 1) + " - status=" + String(status));
+      
+      if (status != WL_NO_SHIELD) {
+        ready = 1;
+        break;
+      }
+      
+      // STA not ready, wait and retry
+      delay(500 + (attempt * 500));  // 500ms, 1000ms, 1500ms
     }
     
-    // Wait for STA to be ready (check multiple states)
-    // WL_NO_SHIELD(255)=not ready, WL_IDLE_STATUS(0)=ready but not connected
-    int waitCount = 0;
-    wl_status_t status = WiFi.status();
-    SerialConsole::println("WiFi scan: initial status=" + String(status));
-    
-    while (status == WL_NO_SHIELD && waitCount < 50) {  // Max 5 seconds
-      delay(100);
-      status = WiFi.status();
-      waitCount++;
-    }
-    
-    SerialConsole::println("WiFi scan: ready after " + String(waitCount*100) + "ms, status=" + String(status));
-    yield();
-    
-    // Perform synchronous scan with hidden networks included
-    // First attempt
-    int n = WiFi.scanNetworks(false, true);  // sync, show hidden
-    SerialConsole::println("WiFi scan: attempt 1, raw_count=" + String(n));
-    
-    // If first scan failed or returned 0, try once more after a delay
-    if (n <= 0) {
-      SerialConsole::println("WiFi scan: first attempt failed, retrying...");
-      delay(500);
-      n = WiFi.scanNetworks(false, true);
-      SerialConsole::println("WiFi scan: attempt 2, raw_count=" + String(n));
-    }
-    
-    if (n == -1) {
-      doc["error"] = "Scan in progress";
+    if (!ready) {
+      doc["error"] = "WiFi STA interface not ready";
       doc["status"] = "failed";
-    } else if (n == -2) {
-      doc["error"] = "Scan failed - WiFi hardware error";
+      doc["hint"] = "Please wait a moment and try again";
+      String response;
+      serializeJson(doc, response);
+      request->send(200, "application/json", response);
+      return;
+    }
+    
+    SerialConsole::println("WiFi scan: STA interface ready, starting scan...");
+    
+    // Perform synchronous scan (blocking, but most reliable)
+    // Don't show hidden networks initially - they're sometimes problematic
+    int n = WiFi.scanNetworks(false, false);  // sync, no hidden
+    SerialConsole::println("WiFi scan: raw_count=" + String(n));
+    
+    // Process results
+    if (n == WIFI_SCAN_RUNNING) {
+      doc["error"] = "Scan already in progress";
+      doc["status"] = "failed";
+      doc["hint"] = "Please wait a moment and try again";
+    } else if (n == WIFI_SCAN_FAILED) {
+      doc["error"] = "Scan failed";
       doc["status"] = "failed";
       doc["hint"] = "Try restarting the device";
     } else if (n == 0) {
       doc["status"] = "complete";
+      doc["count"] = 0;
       doc["message"] = "No networks found";
-      doc["hint"] = "Try moving closer to your router or check if WiFi is enabled";
+      doc["hint"] = "Try moving closer to your router";
     } else if (n > 0) {
       doc["status"] = "complete";
       doc["count"] = n;
       int validCount = 0;
+      
       for (int i = 0; i < n; i++) {
         String ssid = WiFi.SSID(i);
         int32_t rssi = WiFi.RSSI(i);
         
-        // Skip empty SSIDs but include them in the raw count
+        // Skip networks with empty SSID (hidden networks)
         if (ssid.length() == 0) {
-          SerialConsole::println("  [" + String(i) + "] (hidden network) " + String(rssi) + " dBm");
           continue;
         }
         
-        if (validCount < 10) {  // Log first 10 for debugging
+        // Log first 5 networks for debugging
+        if (validCount < 5) {
           SerialConsole::println("  [" + String(i) + "] " + ssid + " " + String(rssi) + " dBm");
         }
         
@@ -410,17 +425,21 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
         net["channel"] = WiFi.channel(i);
         validCount++;
       }
+      
       doc["returned_count"] = validCount;
-      SerialConsole::println("WiFi scan: returned " + String(validCount) + " networks in JSON (out of " + String(n) + " found)");
+      SerialConsole::println("WiFi scan: returned " + String(validCount) + " networks");
     }
     
-    WiFi.scanDelete(); // Clean up scan results
+    // Clean up scan results
+    WiFi.scanDelete();
     
-    // Reconnect to saved network if we disconnected
-    WiFiConfig savedConfig = WiFiManager::loadCredentials(*WebAPI::prefs);
-    if (savedConfig.ssid.length() > 0 && WiFi.status() != WL_CONNECTED) {
-      SerialConsole::println("WiFi scan: reconnecting to saved network: " + savedConfig.ssid);
-      WiFi.begin(savedConfig.ssid.c_str(), savedConfig.password.c_str());
+    // Reconnect to saved network if we were connected before
+    if (wasConnected) {
+      WiFiConfig savedConfig = WiFiManager::loadCredentials(*WebAPI::prefs);
+      if (savedConfig.ssid.length() > 0) {
+        SerialConsole::println("WiFi scan: reconnecting to saved network: " + savedConfig.ssid);
+        WiFi.begin(savedConfig.ssid.c_str(), savedConfig.password.c_str());
+      }
     }
     
     String response;
