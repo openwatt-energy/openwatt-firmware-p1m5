@@ -112,11 +112,107 @@ String getOfflineCSS() {
     "</style>";
 }
 
-// Online CSS - Loads Tailwind CSS from CDN for full styling when internet is available
+// SwitchGrid-inspired Dark Theme for OpenWatt
+String getSwitchGridDarkCSS() {
+  return "<style>"
+    /* CSS Reset and Base - SwitchGrid Dark */
+    "*{box-sizing:border-box;margin:0;padding:0}"
+    "body{font-family:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a0a;color:#e5e5e5;line-height:1.6;min-height:100vh;font-size:14px}"
+    
+    /* Layout - Compact professional */
+    ".max-w-7xl{max-width:75rem;margin:0 auto;padding:0 .75rem}"
+    ".max-w-3xl{max-width:45rem;margin:0 auto;padding:0 .75rem}"
+    ".mx-auto{margin-left:auto;margin-right:auto}"
+    ".px-4{padding-left:.75rem;padding-right:.75rem}"
+    ".py-6{padding-top:1rem;padding-bottom:1rem}"
+    ".p-4{padding:.75rem}.p-5{padding:1rem}.p-6{padding:1.25rem}"
+    ".mb-4{margin-bottom:.75rem}.mb-6{margin-bottom:1rem}.mt-1{margin-top:.25rem}.mt-3{margin-top:.5rem}"
+    ".space-y-1>*+*{margin-top:.25rem}.space-y-3>*+*{margin-top:.5rem}.space-y-4>*+*{margin-top:.75rem}"
+    ".gap-1{gap:.25rem}.gap-3{gap:.5rem}.gap-4{gap:.75rem}"
+    ".flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}"
+    ".grid{display:grid}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}"
+    ".h-10{height:2.25rem}.h-16{height:3.5rem}.w-10{width:2.25rem}"
+    ".h-2\\.5{height:.5rem}.w-2\\.5{width:.5rem}"
+    ".rounded{border-radius:.375rem}.rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.625rem}"
+    ".rounded-full{border-radius:9999px}"
+    "@media(min-width:640px){.sm\\:flex-row{flex-direction:row}.sm\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\\:w-auto{width:auto}}"
+    "@media(min-width:1024px){.lg\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}"
+    
+    /* SwitchGrid Dark Colors - Navy/Black base with Cyan accents */
+    ".bg-white{background:#141414}.bg-gray-50{background:#0f0f0f}.bg-gray-100{background:#1a1a1a}.bg-gray-900{background:#0a0a0a}"
+    ".bg-blue-50{background:rgba(0,217,255,0.08)}.bg-blue-600{background:#00d9ff}"
+    ".bg-emerald-50{background:rgba(16,185,129,0.08)}.bg-emerald-100{background:rgba(16,185,129,0.12)}"
+    ".bg-red-50{background:rgba(239,68,68,0.08)}.bg-red-100{background:rgba(239,68,68,0.12)}.bg-red-500{background:#ef4444}.bg-red-600{background:#dc2626}"
+    ".bg-purple-50{background:rgba(139,92,246,0.08)}.bg-orange-50{background:rgba(249,115,22,0.08)}"
+    
+    /* Text Colors - High contrast on dark */
+    ".text-white{color:#fff}.text-gray-400{color:#9ca3af}.text-gray-500{color:#6b7280}.text-gray-600{color:#a1a1aa}.text-gray-700{color:#d4d4d4}.text-gray-900{color:#e5e5e5}"
+    ".text-blue-400{color:#22d3ee}.text-blue-600{color:#00d9ff}.text-blue-700{color:#67e8f9}.text-blue-900{color:#cffafe}"
+    ".text-emerald-400{color:#34d399}.text-emerald-600{color:#10b981}.text-emerald-700{color:#6ee7b7}.text-emerald-800{color:#a7f3d0}"
+    ".text-red-400{color:#f87171}.text-red-500{color:#ef4444}.text-red-600{color:#f87171}.text-red-700{color:#fca5a5}.text-red-800{color:#fecaca}"
+    ".text-purple-400{color:#a78bfa}.text-purple-600{color:#8b5cf6}.text-purple-900{color:#ddd6fe}"
+    ".text-green-400{color:#4ade80}.text-green-600{color:#22c55e}.text-green-900{color:#bbf7d0}"
+    ".text-orange-400{color:#fb923c}.text-orange-600{color:#f97316}.text-orange-900{color:#fed7aa}"
+    ".text-yellow-400{color:#facc15}.text-yellow-600{color:#eab308}"
+    
+    /* Typography - Clean, professional */
+    ".font-mono{font-family:'SF Mono',Monaco,'Cascadia Code',monospace}"
+    ".font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}"
+    ".text-xs{font-size:.75rem}.text-sm{font-size:.8125rem}.text-lg{font-size:1.0625rem}.text-2xl{font-size:1.5rem}"
+    ".text-center{text-align:center}"
+    
+    /* Borders - Subtle on dark */
+    ".border{border-width:1px;border-style:solid}"
+    ".border-b{border-bottom-width:1px}"
+    ".border-gray-100{border-color:#1f1f1f}.border-gray-200{border-color:#262626}.border-gray-300{border-color:#333}.border-gray-700{border-color:#404040}.border-gray-800{border-color:#2a2a2a}"
+    ".border-blue-200{border-color:rgba(0,217,255,0.2)}.border-green-200{border-color:rgba(16,185,129,0.2)}"
+    
+    /* Components - Cards with subtle borders */
+    ".shadow-sm{box-shadow:0 1px 2px 0 rgba(0,0,0,0.3)}.shadow-lg{box-shadow:0 4px 6px -1px rgba(0,0,0,0.4)}"
+    ".sticky{position:sticky}.top-0{top:0}.z-50{z-index:50}"
+    ".overflow-hidden{overflow:hidden}"
+    ".cursor-pointer{cursor:pointer}"
+    ".hover\\:bg-gray-50:hover{background:#1a1a1a}.hover\\:bg-blue-100:hover{background:rgba(0,217,255,0.15)}.hover\\:bg-blue-700:hover{background:#06b6d4}.hover\\:bg-red-700:hover{background:#b91c1c}"
+    ".hover\\:underline:hover{text-decoration:underline}"
+    ".transition{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"
+    
+    /* Forms - Dark inputs */
+    "input[type=text],input[type=password],input[type=number]{width:100%;padding:.5rem .625rem;border:1px solid #333;border-radius:.375rem;font-size:.8125rem;background:#141414;color:#e5e5e5;transition:border-color .15s}"
+    "input:focus{outline:none;border-color:#00d9ff;box-shadow:0 0 0 2px rgba(0,217,255,0.15)}"
+    "label{display:block;font-size:.75rem;font-weight:600;color:#a1a1aa;margin-bottom:.375rem;text-transform:uppercase;letter-spacing:0.025em}"
+    
+    /* Buttons - Cyan accent */
+    "button{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem .875rem;border-radius:.375rem;font-size:.8125rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;letter-spacing:0.01em}"
+    "button:hover{opacity:.9;transform:translateY(-1px)}"
+    ".btn-primary{background:#00d9ff;color:#0a0a0a}"
+    ".btn-danger{background:#ef4444;color:#fff}"
+    
+    /* Custom utilities */
+    ".inline-flex{display:inline-flex}.gap-2{gap:.375rem}.ml-2{margin-left:.375rem}.ml-auto{margin-left:auto}"
+    ".px-2\\.5{padding-left:.5rem;padding-right:.5rem}.py-0\\.5{padding-top:.125rem;padding-bottom:.125rem}"
+    ".py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.375rem;padding-bottom:.375rem}"
+    ".px-3{padding-left:.625rem;padding-right:.625rem}.py-2{padding-top:.375rem;padding-bottom:.375rem}"
+    ".pb-3{padding-bottom:.625rem}"
+    ".inline-block{display:inline-block}"
+    ".w-full{width:100%}"
+    ".hidden{display:none}"
+    
+    /* Alerts - Dark mode */
+    ".alert{padding:.75rem;border-radius:.375rem;margin-bottom:.75rem;border:1px solid}"
+    ".alert-success{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.2);color:#34d399}"
+    ".alert-error{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);color:#f87171}"
+    ".alert-info{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.15);color:#22d3ee}"
+    
+    /* Status indicators */
+    ".status-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px}"
+    ".status-online{background:#10b981;box-shadow:0 0 4px #10b981}"
+    ".status-offline{background:#ef4444}"
+    "</style>";
+}
+
+// Legacy function - now uses SwitchGrid dark theme as default
 String getOnlineCSS() {
-  return "<link href=\"https://cdn.tailwindcss.com\" rel=\"stylesheet\">"
-    "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap\" rel=\"stylesheet\">"
-    "<style>body{font-family:'Inter',system-ui,sans-serif}</style>";
+  return getSwitchGridDarkCSS();
 }
 
 // Detect if device is in online mode (WiFi connected to upstream network)
