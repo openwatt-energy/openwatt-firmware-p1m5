@@ -1,10 +1,12 @@
 #include "wifi_manager.h"
 #include "serial_console.h"
+#include "config.h"  // For SSID_PREFIX and other config
 #include <Preferences.h>
 #include <cstring>
 #include <nvs.h>
 
-#define AP_SSID_PREFIX "OpenWatt-P1"
+// AP SSID is now defined in config.h as SSID_PREFIX
+// Results in: <SSID_PREFIX>-P1<XXXXXX> (e.g., "OpenWatt-P184B518")
 // WiFi credentials stored using Preferences API (more reliable than direct NVS)
 #define PREFS_NAMESPACE "openwatt"
 #define PREFS_KEY_WIFI_SSID "wifi_ssid"
@@ -16,8 +18,9 @@ void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
   // Load saved credentials
   WiFiConfig config = loadCredentials(prefs);
   
-  // Set AP SSID
-  String apSSID = String(AP_SSID_PREFIX) + deviceId.substring(2);
+  // Set AP SSID using variant-specific prefix
+  // Results in: <SSID_PREFIX>-P1<XXXXXX> (e.g., "OpenWatt-P184B518")
+  String apSSID = String(SSID_PREFIX) + "-P1" + deviceId.substring(2);
   
   // Always start AP mode first (open, no password)
   SerialConsole::println("Starting AP mode...");

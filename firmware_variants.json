@@ -1,0 +1,39 @@
+{
+  "variants": [
+    {
+      "name": "standard",
+      "fw_ext": "ow",
+      "ssid_prefix": "OpenWatt",
+      "allow_mqtt_changes": true,
+      "enable_mqtt": true,
+      "enable_ota": true,
+      "enable_p1_reader": true,
+      "ui_theme": "default",
+      "description": "Standard OpenWatt firmware with full features"
+    },
+    {
+      "name": "openwatt-locked",
+      "fw_ext": "ow-locked",
+      "ssid_prefix": "OpenWatt",
+      "allow_mqtt_changes": false,
+      "enable_mqtt": true,
+      "enable_ota": true,
+      "enable_p1_reader": true,
+      "mqtt_host": "mqtt.example.com",
+      "mqtt_port": 8883,
+      "ui_theme": "default",
+      "description": "OpenWatt with locked MQTT settings"
+    },
+    {
+      "name": "custom-brand",
+      "fw_ext": "custom",
+      "ssid_prefix": "CustomBrand",
+      "allow_mqtt_changes": true,
+      "enable_mqtt": true,
+      "enable_ota": true,
+      "enable_p1_reader": true,
+      "ui_theme": "custom",
+      "description": "Custom branded firmware"
+    }
+  ]
+}

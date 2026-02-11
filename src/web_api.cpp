@@ -42,6 +42,90 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
   WebAPI::deviceId = devId;
   WebAPI::serialNumber = serial;
   
+  // GET /api/config/wifiscan - MUST be registered BEFORE /api/config to avoid route conflicts
+  server.on("/api/config/wifiscan", HTTP_GET, [](AsyncWebServerRequest *request){
+    // Immediate debug - this should ALWAYS print
+    SerialConsole::println("\n*** SCAN REQUEST RECEIVED ***");
+    SerialConsole::println("Time: " + String(millis()));
+    
+    JsonDocument doc;
+    JsonArray networks = doc["networks"].to<JsonArray>();
+    
+    // Check WiFi state
+    SerialConsole::println("Mode: " + String(WiFi.getMode()));
+    SerialConsole::println("Status: " + String(WiFi.status()));
+    
+    // Ensure STA mode is enabled for scanning
+    wifi_mode_t currentMode = WiFi.getMode();
+    
+    if (!(currentMode & WIFI_STA)) {
+      SerialConsole::println("Enabling STA...");
+      WiFi.mode((wifi_mode_t)(currentMode | WIFI_STA));
+      delay(2000);
+      SerialConsole::println("STA enabled, mode=" + String(WiFi.getMode()));
+    }
+    
+    // Perform scan
+    SerialConsole::println("Scanning...");
+    int n = WiFi.scanNetworks();
+    SerialConsole::println("Found: " + String(n) + " networks");
+    
+    if (n == WIFI_SCAN_FAILED) {
+      doc["error"] = "WiFi scan failed";
+      doc["status"] = "failed";
+      doc["hint"] = "Scan failed - try again";
+    } else if (n == WIFI_SCAN_RUNNING) {
+      doc["error"] = "Scan in progress";
+      doc["status"] = "failed";
+      doc["hint"] = "Wait and try again";
+    } else if (n == 0) {
+      doc["status"] = "complete";
+      doc["count"] = 0;
+      doc["message"] = "No networks found";
+      doc["hint"] = "Try moving closer to your router";
+    } else if (n > 0) {
+      doc["status"] = "complete";
+      doc["count"] = n;
+      int validCount = 0;
+      
+      for (int i = 0; i < n; i++) {
+        String ssid = WiFi.SSID(i);
+        int32_t rssi = WiFi.RSSI(i);
+        
+        // Skip empty SSIDs
+        if (ssid.length() == 0) {
+          continue;
+        }
+        
+        JsonObject net = networks.add<JsonObject>();
+        net["ssid"] = ssid;
+        net["rssi"] = rssi;
+        net["encryption"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "encrypted";
+        net["channel"] = WiFi.channel(i);
+        validCount++;
+        
+        // Log for debugging
+        if (validCount <= 5) {
+          SerialConsole::println("  [" + String(i) + "] " + ssid + " " + String(rssi) + " dBm");
+        }
+      }
+      
+      doc["returned_count"] = validCount;
+      SerialConsole::println("WiFi scan: Returned " + String(validCount) + " valid networks");
+    } else {
+      doc["error"] = "Unknown scan result: " + String(n);
+      doc["status"] = "failed";
+      doc["hint"] = "Try again";
+    }
+    
+    // Clean up
+    WiFi.scanDelete();
+    
+    String response;
+    serializeJson(doc, response);
+    request->send(200, "application/json", response);
+  });
+  
   // GET /api/config
   server.on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
@@ -322,36 +406,49 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     }
   );
   
-  // GET /api/config/wifiscan - Simple and reliable WiFi scan
+  // GET /api/config/wifiscan - WiFi scan with proper STA setup
   server.on("/api/config/wifiscan", HTTP_GET, [](AsyncWebServerRequest *request){
+    // Immediate debug - this should ALWAYS print
+    SerialConsole::println("\n*** SCAN REQUEST RECEIVED ***");
+    SerialConsole::println("Time: " + String(millis()));
+    
     JsonDocument doc;
     JsonArray networks = doc["networks"].to<JsonArray>();
     
-    SerialConsole::println("WiFi scan: Starting...");
+    // Check WiFi state
+    SerialConsole::println("Mode: " + String(WiFi.getMode()));
+    SerialConsole::println("Status: " + String(WiFi.status()));
     
-    // Simple approach: Just try to scan directly
-    // ESP32 can scan in any mode, no need to switch modes
-    int n = WiFi.scanNetworks();
-    SerialConsole::println("WiFi scan: Found " + String(n) + " networks");
+    // Ensure STA mode is enabled for scanning
+    wifi_mode_t currentMode = WiFi.getMode();
     
-    if (n < 0) {
-      // Scan failed - try once more after a short delay
-      SerialConsole::println("WiFi scan: First attempt failed, retrying...");
-      delay(500);
-      n = WiFi.scanNetworks();
-      SerialConsole::println("WiFi scan: Retry found " + String(n) + " networks");
+    if (!(currentMode & WIFI_STA)) {
+      SerialConsole::println("Enabling STA...");
+      WiFi.mode((wifi_mode_t)(currentMode | WIFI_STA));
+      delay(2000);
+      SerialConsole::println("STA enabled, mode=" + String(WiFi.getMode()));
     }
     
-    if (n < 0) {
+    // Perform scan
+    SerialConsole::println("Scanning...");
+    int n = WiFi.scanNetworks();
+    SerialConsole::println("Found: " + String(n) + " networks");
+    SerialConsole::println("WiFi scan: Result=" + String(n));
+    
+    if (n == WIFI_SCAN_FAILED) {
       doc["error"] = "WiFi scan failed";
       doc["status"] = "failed";
-      doc["hint"] = "Please try again";
+      doc["hint"] = "Scan failed - try again";
+    } else if (n == WIFI_SCAN_RUNNING) {
+      doc["error"] = "Scan in progress";
+      doc["status"] = "failed";
+      doc["hint"] = "Wait and try again";
     } else if (n == 0) {
       doc["status"] = "complete";
       doc["count"] = 0;
       doc["message"] = "No networks found";
       doc["hint"] = "Try moving closer to your router";
-    } else {
+    } else if (n > 0) {
       doc["status"] = "complete";
       doc["count"] = n;
       int validCount = 0;
@@ -380,6 +477,10 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       
       doc["returned_count"] = validCount;
       SerialConsole::println("WiFi scan: Returned " + String(validCount) + " valid networks");
+    } else {
+      doc["error"] = "Unknown scan result: " + String(n);
+      doc["status"] = "failed";
+      doc["hint"] = "Try again";
     }
     
     // Clean up
