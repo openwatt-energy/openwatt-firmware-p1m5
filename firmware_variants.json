@@ -8,7 +8,7 @@
       "enable_mqtt": true,
       "enable_ota": true,
       "enable_p1_reader": true,
-      "ui_theme": "default",
+      "ui_theme": "switchgrid",
       "description": "Standard OpenWatt firmware with full features"
     },
     {
