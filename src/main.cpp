@@ -1,7 +1,7 @@
 /**
  * OpenWatt P1 Reader Firmware
  * Based on reverse engineering of Xenn P1 Dongle
- * 
+ *
  * Features:
  * - Reads DSMR P1 telegrams from Belgian smart meters
  * - WiFi connectivity (STA + AP modes)
@@ -65,20 +65,20 @@ P1Data latestData;
 String getDeviceId() {
   uint8_t mac[6];
   esp_efuse_mac_get_default(mac);
-  
+
   char deviceId[16];
   sprintf(deviceId, "P1%02X%02X%02X", mac[3], mac[4], mac[5]);
-  
+
   return String(deviceId);
 }
 
 String getDeviceName() {
   uint8_t mac[6];
   esp_efuse_mac_get_default(mac);
-  
+
   char deviceName[32];
-  sprintf(deviceName, "%s%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
-  
+  sprintf(deviceName, "%s-P1%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
+
   return String(deviceName);
 }
 
@@ -99,23 +99,23 @@ String generateUUID() {
   char uuid[37];
   const char* hex = "0123456789ABCDEF";
   uint8_t bytes[16];
-  
+
   // Generate random bytes
   for (int i = 0; i < 16; i++) {
     bytes[i] = random(256);
   }
-  
+
   // Set version (4) and variant (10xxxxxx)
   bytes[6] = (bytes[6] & 0x0F) | 0x40;
   bytes[8] = (bytes[8] & 0x3F) | 0x80;
-  
+
   // Format as UUID string
   sprintf(uuid, "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
     bytes[0], bytes[1], bytes[2], bytes[3],
     bytes[4], bytes[5], bytes[6], bytes[7],
     bytes[8], bytes[9], bytes[10], bytes[11],
     bytes[12], bytes[13], bytes[14], bytes[15]);
-  
+
   return String(uuid);
 }
 
@@ -123,7 +123,7 @@ void publishToMQTT(const P1Data& data) {
   if (!MQTTClient::isConnected()) {
     return;
   }
-  
+
   // Check publish interval
   static unsigned long lastMQTTPublish = 0;
   unsigned long now = millis();
@@ -131,15 +131,15 @@ void publishToMQTT(const P1Data& data) {
     return;  // Too soon, skip this publish
   }
   lastMQTTPublish = now;
-  
+
   JsonDocument doc;
-  
+
   // Unix timestamp
   doc["timestamp"] = millis() / 1000;
-  
+
   // Timestamp from meter
   doc["0-0:1.0.0"] = data.timestamp;
-  
+
   // Equipment identifier
   doc["0-0:96.1.1"] = data.equipmentId;
   doc["0-0:96.1.2"] = data.secondId;
@@ -147,23 +147,23 @@ void publishToMQTT(const P1Data& data) {
   doc["0-0:96.13.0"] = data.textMessage;
   doc["0-0:96.14.0"] = String(data.tariffIndicator);
   doc["0-0:96.3.10"] = String(data.switchPosition);
-  
+
   // Device control switches (default to 0 if not available)
   doc["0-1:96.3.10"] = "0";
   doc["0-2:96.3.10"] = "0";
   doc["0-3:96.3.10"] = "0";
   doc["0-4:96.3.10"] = "0";
-  
+
   // Limiter
   JsonObject t17_0_0 = doc["0-0:17.0.0"].to<JsonObject>();
   t17_0_0["value"] = 99.999;
   t17_0_0["unit"] = "kW";
-  
+
   // Average demand
   JsonObject t1_4_0 = doc["1-0:1.4.0"].to<JsonObject>();
   t1_4_0["value"] = data.avgDemand;
   t1_4_0["unit"] = "kW";
-  
+
   // Max demand with capture time
   JsonObject t1_6_0 = doc["1-0:1.6.0"].to<JsonObject>();
   t1_6_0["value"] = data.maxDemandMonth;
@@ -175,155 +175,155 @@ void publishToMQTT(const P1Data& data) {
     year += (year >= 50) ? 1900 : 2000;
     t1_6_0["timestamp"] = year * 10000000000ULL + data.maxDemandTimestamp.substring(2).toInt();
   }
-  
+
   // Active power
   JsonObject t1_7_0 = doc["1-0:1.7.0"].to<JsonObject>();
   t1_7_0["value"] = data.powerConsumed;
   t1_7_0["unit"] = "kW";
-  
+
   // Energy consumption T1
   JsonObject t1_8_1 = doc["1-0:1.8.1"].to<JsonObject>();
   t1_8_1["value"] = data.consumptionT1;
   t1_8_1["unit"] = "kWh";
-  
+
   // Energy consumption T2
   JsonObject t1_8_2 = doc["1-0:1.8.2"].to<JsonObject>();
   t1_8_2["value"] = data.consumptionT2;
   t1_8_2["unit"] = "kWh";
-  
+
   // Energy consumption T3 (optional - may not be present on all meters)
   if (data.consumptionT3 > 0) {
     JsonObject t1_8_3 = doc["1-0:1.8.3"].to<JsonObject>();
     t1_8_3["value"] = data.consumptionT3;
     t1_8_3["unit"] = "kWh";
   }
-  
+
   // Energy consumption T4 (optional - may not be present on all meters)
   if (data.consumptionT4 > 0) {
     JsonObject t1_8_4 = doc["1-0:1.8.4"].to<JsonObject>();
     t1_8_4["value"] = data.consumptionT4;
     t1_8_4["unit"] = "kWh";
   }
-  
+
   // Energy consumption T5 (optional - may not be present on all meters)
   if (data.consumptionT5 > 0) {
     JsonObject t1_8_5 = doc["1-0:1.8.5"].to<JsonObject>();
     t1_8_5["value"] = data.consumptionT5;
     t1_8_5["unit"] = "kWh";
   }
-  
+
   // Active power export
   JsonObject t2_7_0 = doc["1-0:2.7.0"].to<JsonObject>();
   t2_7_0["value"] = data.powerProduced;
   t2_7_0["unit"] = "kW";
-  
+
   // Energy production T1
   JsonObject t2_8_1 = doc["1-0:2.8.1"].to<JsonObject>();
   t2_8_1["value"] = data.productionT1;
   t2_8_1["unit"] = "kWh";
-  
+
   // Energy production T2
   JsonObject t2_8_2 = doc["1-0:2.8.2"].to<JsonObject>();
   t2_8_2["value"] = data.productionT2;
   t2_8_2["unit"] = "kWh";
-  
+
   // Energy production T3 (optional - may not be present on all meters)
   if (data.productionT3 > 0) {
     JsonObject t2_8_3 = doc["1-0:2.8.3"].to<JsonObject>();
     t2_8_3["value"] = data.productionT3;
     t2_8_3["unit"] = "kWh";
   }
-  
+
   // Energy production T4 (optional - may not be present on all meters)
   if (data.productionT4 > 0) {
     JsonObject t2_8_4 = doc["1-0:2.8.4"].to<JsonObject>();
     t2_8_4["value"] = data.productionT4;
     t2_8_4["unit"] = "kWh";
   }
-  
+
   // Energy production T5 (optional - may not be present on all meters)
   if (data.productionT5 > 0) {
     JsonObject t2_8_5 = doc["1-0:2.8.5"].to<JsonObject>();
     t2_8_5["value"] = data.productionT5;
     t2_8_5["unit"] = "kWh";
   }
-  
+
   // Power import L1
   JsonObject t21_7_0 = doc["1-0:21.7.0"].to<JsonObject>();
   t21_7_0["value"] = data.powerImportL1;
   t21_7_0["unit"] = "kW";
-  
+
   // Power export L1
   JsonObject t22_7_0 = doc["1-0:22.7.0"].to<JsonObject>();
   t22_7_0["value"] = data.powerExportL1;
   t22_7_0["unit"] = "kW";
-  
+
   // Fuse limit
   JsonObject t31_4_0 = doc["1-0:31.4.0"].to<JsonObject>();
   t31_4_0["value"] = 999.99;
   t31_4_0["unit"] = "A";
-  
+
   // Current L1
   JsonObject t31_7_0 = doc["1-0:31.7.0"].to<JsonObject>();
   t31_7_0["value"] = data.currentL1;
   t31_7_0["unit"] = "A";
-  
+
   // Voltage L1
   JsonObject t32_7_0 = doc["1-0:32.7.0"].to<JsonObject>();
   t32_7_0["value"] = data.voltageL1;
   t32_7_0["unit"] = "V";
-  
+
   // Power import L2
   JsonObject t41_7_0 = doc["1-0:41.7.0"].to<JsonObject>();
   t41_7_0["value"] = data.powerImportL2;
   t41_7_0["unit"] = "kW";
-  
+
   // Power export L2
   JsonObject t42_7_0 = doc["1-0:42.7.0"].to<JsonObject>();
   t42_7_0["value"] = data.powerExportL2;
   t42_7_0["unit"] = "kW";
-  
+
   // Current L2
   JsonObject t51_7_0 = doc["1-0:51.7.0"].to<JsonObject>();
   t51_7_0["value"] = data.currentL2;
   t51_7_0["unit"] = "A";
-  
+
   // Voltage L2
   JsonObject t52_7_0 = doc["1-0:52.7.0"].to<JsonObject>();
   t52_7_0["value"] = data.voltageL2;
   t52_7_0["unit"] = "V";
-  
+
   // Power import L3
   JsonObject t61_7_0 = doc["1-0:61.7.0"].to<JsonObject>();
   t61_7_0["value"] = data.powerImportL3;
   t61_7_0["unit"] = "kW";
-  
+
   // Power export L3
   JsonObject t62_7_0 = doc["1-0:62.7.0"].to<JsonObject>();
   t62_7_0["value"] = data.powerExportL3;
   t62_7_0["unit"] = "kW";
-  
+
   // Current L3
   JsonObject t71_7_0 = doc["1-0:71.7.0"].to<JsonObject>();
   t71_7_0["value"] = data.currentL3;
   t71_7_0["unit"] = "A";
-  
+
   // Voltage L3
   JsonObject t72_7_0 = doc["1-0:72.7.0"].to<JsonObject>();
   t72_7_0["value"] = data.voltageL3;
   t72_7_0["unit"] = "V";
-  
+
   // Meter version
   doc["1-0:94.32.1"] = data.meterVersion;
-  
+
   // Metadata
   doc["id"] = generateUUID();
   doc["dongle_id"] = state.deviceId;
   doc["sent_timestamp"] = millis() / 1000;
-  
+
   String jsonString;
   serializeJson(doc, jsonString);
-  
+
   // Publish to device-specific topic: <device_id>/data/readings
   // (MQTTClient::publish() will add the P1M5/ prefix)
   String topic = state.deviceId + "/data/readings";
@@ -335,7 +335,7 @@ void publishMQTTStatus() {
   if (!MQTTClient::isConnected()) {
     return;
   }
-  
+
   // Get or initialize reboot count from NVS
   static int rebootCount = 0;
   static bool rebootCountLoaded = false;
@@ -350,52 +350,52 @@ void publishMQTTStatus() {
       nvs_close(h);
     }
   }
-  
+
   JsonDocument doc;
-  
+
   // Generate UUID for message ID
   doc["id"] = generateUUID();
-  
+
   // Device identification (Xenn format)
   doc["dongle_id"] = state.deviceId;
   doc["friendly_name"] = "Config log";
   doc["sensorId"] = "config";
   doc["timestamp"] = millis() / 1000;
   doc["hostname"] = state.deviceId;
-  
+
   // System stats
   doc["reboots"] = rebootCount;
   doc["uptime"] = millis() / 1000;  // seconds
   doc["dongle_ip"] = WiFiManager::getIP();
   doc["fw_ver"] = FIRMWARE_VERSION;
-  
+
   // Customer info
   doc["customer"] = CUSTOMER_NAME;
   doc["fingerprint"] = getFingerprint();
-  
+
   // Throttle setting (configurable)
   doc["rtl_throttle"] = 5;  // Default throttle value
-  
+
   // User config (from NVS if available)
   doc["email"] = "";  // Could be loaded from NVS
-  
+
   // MQTT config
   MQTTConfig mqttCfg = MQTTClient::getConfig();
   doc["mqtt_host"] = mqttCfg.host;
   doc["mqtt_port"] = String(mqttCfg.port);
   doc["mqtt_user"] = state.deviceId;
   doc["mqtt_pfix"] = mqttCfg.topic + state.deviceId;
-  
+
   // WiFi config
   doc["wifi_ssid"] = WiFiManager::getConnectedSSID();
-  
+
   String jsonString;
   serializeJson(doc, jsonString);
-  
+
   // Publish to config topic (Xenn compatible)
   String topic = state.deviceId + "/sys/config";
   MQTTClient::publish(topic, jsonString);
-  
+
   SerialConsole::println("MQTT: Published config: fw=" + String(FIRMWARE_VERSION));
 }
 #else
@@ -427,29 +427,29 @@ void onP1DataReceived(const P1Data& data) {
   if (data.maxDemandMonth > 0) latestData.maxDemandMonth = data.maxDemandMonth;
   if (data.maxDemand13M > 0) latestData.maxDemand13M = data.maxDemand13M;
   if (data.maxDemandTimestamp.length() > 0) latestData.maxDemandTimestamp = data.maxDemandTimestamp;
-  
+
   // Identification
   if (data.meterModel.length() > 0) latestData.meterModel = data.meterModel;
   if (data.meterVersion.length() > 0) latestData.meterVersion = data.meterVersion;
   if (data.secondId.length() > 0) latestData.secondId = data.secondId;
   if (data.textMessage.length() > 0) latestData.textMessage = data.textMessage;
-  
+
   // Voltage (accept 0 values as they are valid readings)
   if (data.voltageL1 >= 0) latestData.voltageL1 = data.voltageL1;
   if (data.voltageL2 >= 0) latestData.voltageL2 = data.voltageL2;
   if (data.voltageL3 >= 0) latestData.voltageL3 = data.voltageL3;
-  
+
   // Current (accept 0 values as they are valid readings)
   if (data.currentL1 >= 0) latestData.currentL1 = data.currentL1;
   if (data.currentL2 >= 0) latestData.currentL2 = data.currentL2;
   if (data.currentL3 >= 0) latestData.currentL3 = data.currentL3;
   if (data.currentTotal >= 0) latestData.currentTotal = data.currentTotal;
-  
+
   // Switch position
   if (data.switchPosition >= 0) latestData.switchPosition = data.switchPosition;
-  
+
   latestData.valid = true;
-  
+
   WebAPI::setLatestData(latestData);
   publishToMQTT(latestData);
   broadcastToWebSocket(latestData);
@@ -461,27 +461,27 @@ void onP1DataReceived(const P1Data& data) {
 
 void broadcastToWebSocket(const P1Data& data) {
   JsonDocument doc;
-  
+
   // Add server timestamp so UI can see update frequency even if meter data unchanged
   doc["last_update"] = String(millis());
-  
+
   // Identification
   doc["0-0:96.1.1"] = data.equipmentId;
   doc["0-0:96.1.4"] = data.meterModel;
   doc["1-0:94.32.1"] = data.meterVersion;
   doc["0-0:96.1.2"] = data.secondId;
   doc["0-0:96.13.0"] = data.textMessage;
-  
+
   // Timestamp and tariff
   doc["0-0:1.0.0"] = data.timestamp;
   doc["0-0:96.14.0"] = data.tariffIndicator;
-  
+
   // Energy consumption/production (kWh)
   doc["1-0:1.8.1"] = data.consumptionT1;
   doc["1-0:2.8.1"] = data.productionT1;
   doc["1-0:1.8.2"] = data.consumptionT2;
   doc["1-0:2.8.2"] = data.productionT2;
-  
+
   // Instantaneous power (kW) - total and per-phase
   doc["1-0:1.7.0"] = data.powerConsumed;
   doc["1-0:2.7.0"] = data.powerProduced;
@@ -489,28 +489,28 @@ void broadcastToWebSocket(const P1Data& data) {
   doc["1-0:21.7.0"] = data.powerImportL1;  // L1 import
   doc["1-0:41.7.0"] = data.powerImportL2;  // L2 import
   doc["1-0:61.7.0"] = data.powerImportL3;  // L3 import
-  
+
   // Demand history
   doc["1-0:1.6.0"] = data.maxDemandMonth;
   doc["1-0:1.6.0_timestamp"] = data.maxDemandTimestamp;
   doc["0-0:98.1.0"] = data.maxDemand13M;
-  
+
   // Voltage (V) - 3 phases
   doc["1-0:32.7.0"] = data.voltageL1;
   doc["1-0:52.7.0"] = data.voltageL2;
   doc["1-0:72.7.0"] = data.voltageL3;
-  
+
   // Current (A) - 3 phases
   doc["1-0:31.7.0"] = data.currentL1;
   doc["1-0:51.7.0"] = data.currentL2;
   doc["1-0:71.7.0"] = data.currentL3;
-  
+
   // Switch position
   doc["0-0:96.3.10"] = data.switchPosition;
-  
+
   String jsonString;
   serializeJson(doc, jsonString);
-  
+
   ws.textAll(jsonString);
 }
 
@@ -518,7 +518,7 @@ void broadcastToWebSocket(const P1Data& data) {
 // WEBSOCKET HANDLER
 // ============================================================================
 
-void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, 
+void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                       AwsEventType type, void *arg, uint8_t *data, size_t len) {
   if (type == WS_EVT_CONNECT) {
     SerialConsole::println("WebSocket client connected: " + String(client->id()));
@@ -542,14 +542,14 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 void setup() {
   // Initialize LED first (device powered)
   LEDHandler::begin();
-  
+
   // Initialize Serial Console
   SerialConsole::begin();
-  
+
   SerialConsole::print("Firmware: ");
   SerialConsole::println(FIRMWARE_VERSION);
   SerialConsole::println("");
-  
+
   // Create any missing NVS keys via C API so Preferences never sees NOT_FOUND (it logs even with defaults)
   {
     nvs_handle_t h;
@@ -576,18 +576,18 @@ void setup() {
     SerialConsole::println("ERROR: NVS init failed!");
     delay(1000);
   }
-  
+
   // Generate device ID and serial number
   state.deviceId = getDeviceId();
   state.serialNumber = getDeviceName();
-  
+
   SerialConsole::println("Device Info:");
   SerialConsole::println("  ID: " + state.deviceId);
   SerialConsole::println("  Serial: " + state.serialNumber);
   SerialConsole::println("");
   yield();
   delay(100);
-  
+
   // Setup WiFi
   SerialConsole::println("Setting up WiFi...");
   SerialConsole::flush();
@@ -604,7 +604,7 @@ void setup() {
   SerialConsole::println("ArduinoOTA ready (port 3232)");
   yield();
   delay(100);
-  
+
   // Setup MQTT (if enabled)
   #if ENABLE_MQTT
   SerialConsole::println("Setting up MQTT...");
@@ -626,7 +626,7 @@ void setup() {
   yield();
   delay(100);
   #endif
-  
+
   // Setup WebSocket
   SerialConsole::println("Setting up WebSocket...");
   SerialConsole::flush();
@@ -635,7 +635,7 @@ void setup() {
   server.addHandler(&ws);
   yield();
   delay(100);
-  
+
   // Setup REST API
   SerialConsole::println("Setting up REST API...");
   SerialConsole::flush();
@@ -643,7 +643,7 @@ void setup() {
   WebAPI::setup(server, preferences, state.deviceId, state.serialNumber);
   yield();
   delay(100);
-  
+
   // Start HTTP server
   SerialConsole::println("Starting HTTP server...");
   SerialConsole::flush();
@@ -653,7 +653,7 @@ void setup() {
   SerialConsole::flush();
   yield();
   delay(100);
-  
+
   // Setup P1 Reader
   SerialConsole::println("Setting up P1 Reader...");
   SerialConsole::flush();
@@ -661,7 +661,7 @@ void setup() {
   P1Reader::begin();
   yield();
   delay(100);
-  
+
   // Setup OTA Updates (if enabled)
   #if ENABLE_OTA
   SerialConsole::println("Setting up OTA...");
@@ -675,7 +675,7 @@ void setup() {
   yield();
   delay(100);
   #endif
-  
+
   SerialConsole::println("");
   SerialConsole::println("*** Starting OpenWatt application ***");
   SerialConsole::println("Web UI: http://" + WiFiManager::getAPIP());
@@ -692,13 +692,13 @@ void loop() {
   yield();
   LEDHandler::loop();
   yield();
-  
+
   // Maintain MQTT connection (if enabled)
   #if ENABLE_MQTT
   MQTTClient::reconnect();
   MQTTClient::loop();
   yield();
-  
+
   // Publish status periodically (firmware version, uptime, etc.)
   static unsigned long lastStatusPublish = 0;
   if (millis() - lastStatusPublish > MQTT_STATUS_INTERVAL_MS) {
@@ -707,17 +707,17 @@ void loop() {
   }
   yield();
   #endif
-  
+
   // Handle OTA updates (if enabled)
   #if ENABLE_OTA
   OTAUpdate::loop();
   yield();
   #endif
-  
+
   // Cleanup WebSocket
   ws.cleanupClients();
   yield();
-  
+
   // Check WiFi connection status periodically
   static unsigned long lastWiFiCheck = 0;
   if (millis() - lastWiFiCheck > 10000) {
@@ -736,6 +736,6 @@ void loop() {
     }
     yield();
   }
-  
+
   delay(10);
 }

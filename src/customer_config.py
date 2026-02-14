@@ -43,24 +43,22 @@ def json_to_c_value(value, value_type=None):
 
 def generate_header(config, customer_name):
     """Generate C header from customer config."""
-    
+
     lines = [
         "/* Auto-generated file - DO NOT EDIT */",
         "/* Generated from: {}.json */".format(customer_name),
         "",
-        "#ifndef CUSTOMER_CONFIG_H",
-        "#define CUSTOMER_CONFIG_H",
-        "",
         f'#define CUSTOMER_NAME "{config.get("customer", "")}"',
         f'#define CUSTOMER_DISPLAY_NAME "{config.get("display_name", "")}"',
         f'#define CUSTOMER_FINGERPRINT_DEFAULT "{config.get("fingerprint_default", "")}"',
+        f'#define SALT_STRING "{config.get("salt_string", "")}"',
         "",
         "// AP Configuration",
         f'#define AP_SSID_PREFIX "{config.get("ap_ssid_prefix", "OpenWatt")}"',
         "",
         "// MQTT Configuration",
     ]
-    
+
     mqtt = config.get("mqtt", {})
     lines.extend([
         f'#define MQTT_BROKER_HOST "{mqtt.get("broker_host", "mqtt.example.com")}"',
@@ -70,7 +68,7 @@ def generate_header(config, customer_name):
         "",
         "// Feature Flags",
     ])
-    
+
     features = config.get("features", {})
     lines.extend([
         f'#define JSON_API_ENABLED {1 if features.get("json_api_enabled", True) else 0}',
@@ -78,7 +76,7 @@ def generate_header(config, customer_name):
         "",
         "// Theme Colors (CSS hex values)",
     ])
-    
+
     theme = config.get("theme", {})
     lines.extend([
         f'#define THEME_PRIMARY "{theme.get("primary", "#2563eb")}"',
@@ -88,10 +86,8 @@ def generate_header(config, customer_name):
         "",
         "// Firmware version suffix",
         f'#define FIRMWARE_VERSION_SUFFIX "-{customer_name}"',
-        "",
-        "#endif // CUSTOMER_CONFIG_H",
     ])
-    
+
     return '\n'.join(lines)
 
 
@@ -99,26 +95,26 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python3 customer_config.py <config.json>")
         sys.exit(1)
-    
+
     config_path = Path(sys.argv[1])
     if not config_path.exists():
         print(f"Error: Config file not found: {config_path}")
         sys.exit(1)
-    
+
     with open(config_path, 'r') as f:
         config = json.load(f)
-    
+
     customer_name = config.get('customer', 'unknown')
-    
+
     # Generate header content
     header_content = generate_header(config, customer_name)
-    
+
     # Write to customer_config.h (in same directory as config)
     output_path = config_path.parent.parent / 'customer_config.h'
-    
+
     with open(output_path, 'w') as f:
         f.write(header_content)
-    
+
     print(f"Generated: {output_path}")
     print(f"Customer: {config.get('display_name')} ({customer_name})")
     print(f"Fingerprint: {config.get('fingerprint_default')}")
