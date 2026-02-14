@@ -1,16 +1,28 @@
 #include "web_ui.h"
+#include "config.h"
 
 // Include WiFi header for status checking
 #include <WiFi.h>
 
+// Generate CSS variables for theming from compile-time config
+String getThemeVariables() {
+  String css = ":root{";
+  css += "--primary:" THEME_PRIMARY ";";
+  css += "--bg:" THEME_BACKGROUND ";";
+  css += "--text:" THEME_TEXT ";";
+  css += "--accent:" THEME_ACCENT ";";
+  css += "}";
+  return css;
+}
+
 // Embedded minimal CSS for offline/AP mode (when no internet connectivity)
 // This is a compact, self-contained stylesheet that works without external dependencies
 String getOfflineCSS() {
-  return "<style>"
+  return "<style>" + getThemeVariables() +
     /* CSS Reset and Base */
     "*{box-sizing:border-box;margin:0;padding:0}"
-    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f9fafb;color:#111827;line-height:1.5;min-height:100vh}"
-    
+    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}"
+
     /* Layout - Minimal but functional */
     ".max-w-7xl{max-width:80rem;margin:0 auto;padding:0 1rem}"
     ".max-w-3xl{max-width:48rem;margin:0 auto;padding:0 1rem}"
@@ -29,7 +41,7 @@ String getOfflineCSS() {
     ".rounded-full{border-radius:9999px}"
     "@media(min-width:640px){.sm\\:flex-row{flex-direction:row}.sm\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\\:w-auto{width:auto}}"
     "@media(min-width:1024px){.lg\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}"
-    
+
     /* Colors */
     ".bg-white{background:#fff}.bg-gray-50{background:#f9fafb}.bg-gray-100{background:#f3f4f6}.bg-gray-900{background:#111827}"
     ".bg-blue-50{background:#eff6ff}.bg-blue-600{background:#2563eb}"
@@ -45,7 +57,7 @@ String getOfflineCSS() {
     ".to-purple-100{--tw-gradient-to:#f3e8ff}"
     ".from-orange-50{--tw-gradient-from:#fff7ed;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgb(255 247 237 / 0))}"
     ".to-orange-100{--tw-gradient-to:#ffedd5}"
-    
+
     /* Text Colors */
     ".text-white{color:#fff}.text-gray-400{color:#9ca3af}.text-gray-500{color:#6b7280}.text-gray-600{color:#4b5563}.text-gray-700{color:#374151}.text-gray-900{color:#111827}"
     ".text-blue-400{color:#60a5fa}.text-blue-600{color:#2563eb}.text-blue-700{color:#1d4ed8}.text-blue-900{color:#1e3a8a}"
@@ -58,19 +70,19 @@ String getOfflineCSS() {
     ".text-pink-400{color:#f472b6}.text-pink-600{color:#db2777}"
     ".text-cyan-400{color:#22d3ee}.text-teal-400{color:#2dd4bf}.text-amber-400{color:#fbbf24}"
     ".text-blue-500{color:#3b82f6}.text-emerald-500{color:#10b981}"
-    
+
     /* Typography */
     ".font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}"
     ".font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}"
     ".text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-lg{font-size:1.125rem}.text-2xl{font-size:1.5rem}"
     ".text-center{text-align:center}"
-    
+
     /* Borders */
     ".border{border-width:1px;border-style:solid}"
     ".border-b{border-bottom-width:1px}"
     ".border-gray-100{border-color:#f3f4f6}.border-gray-200{border-color:#e5e7eb}.border-gray-300{border-color:#d1d5db}.border-gray-700{border-color:#374151}.border-gray-800{border-color:#1f2937}"
     ".border-blue-200{border-color:#bfdbfe}.border-green-200{border-color:#bbf7d0}.border-purple-200{border-color:#e9d5ff}.border-orange-200{border-color:#fed7aa}"
-    
+
     /* Components */
     ".shadow-sm{box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.shadow-lg{box-shadow:0 10px 15px -3px rgb(0 0 0 / .1)}"
     ".sticky{position:sticky}.top-0{top:0}.z-50{z-index:50}"
@@ -79,18 +91,18 @@ String getOfflineCSS() {
     ".hover\\:bg-gray-50:hover{background:#f9fafb}.hover\\:bg-blue-100:hover{background:#dbeafe}.hover\\:bg-blue-700:hover{background:#1d4ed8}.hover\\:bg-red-700:hover{background:#b91c1c}"
     ".hover\\:underline:hover{text-decoration:underline}"
     ".transition{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"
-    
+
     /* Forms */
     "input[type=text],input[type=password],input[type=number]{width:100%;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:.875rem}"
     "input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}"
     "label{display:block;font-size:.875rem;font-weight:500;color:#374151;margin-bottom:.25rem}"
-    
+
     /* Buttons */
     "button{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .15s}"
     "button:hover{opacity:.9}"
-    ".btn-primary{background:#2563eb;color:#fff}"
+    ".btn-primary{background:var(--primary);color:#fff}"
     ".btn-danger{background:#dc2626;color:#fff}"
-    
+
     /* Custom utilities */
     ".inline-flex{display:inline-flex}.gap-2{gap:.5rem}.ml-2{margin-left:.5rem}.ml-auto{margin-left:auto}"
     ".px-2\\.5{padding-left:.625rem;padding-right:.625rem}.py-0\\.5{padding-top:.125rem;padding-bottom:.125rem}"
@@ -100,127 +112,31 @@ String getOfflineCSS() {
     ".inline-block{display:inline-block}"
     ".w-full{width:100%}"
     ".hidden{display:none}"
-    
+
     /* Alerts/Messages */
     ".alert{padding:1rem;border-radius:.5rem;margin-bottom:1rem}"
     ".alert-success{background:#ecfdf5;color:#065f46}"
     ".alert-error{background:#fef2f2;color:#991b1b}"
     ".alert-info{background:#eff6ff;color:#1e40af}"
-    
+
     /* Offline mode indicator */
     ".offline-mode{background:#fef3c7;border:1px solid #f59e0b;padding:0.75rem;border-radius:0.5rem;margin-bottom:1rem;color:#92400e}"
     "</style>";
 }
 
-// SwitchGrid-inspired Dark Theme for OpenWatt
-String getSwitchGridDarkCSS() {
-  return "<style>"
-    /* CSS Reset and Base - SwitchGrid Dark */
-    "*{box-sizing:border-box;margin:0;padding:0}"
-    "body{font-family:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a0a;color:#e5e5e5;line-height:1.6;min-height:100vh;font-size:14px}"
-    
-    /* Layout - Compact professional */
-    ".max-w-7xl{max-width:75rem;margin:0 auto;padding:0 .75rem}"
-    ".max-w-3xl{max-width:45rem;margin:0 auto;padding:0 .75rem}"
-    ".mx-auto{margin-left:auto;margin-right:auto}"
-    ".px-4{padding-left:.75rem;padding-right:.75rem}"
-    ".py-6{padding-top:1rem;padding-bottom:1rem}"
-    ".p-4{padding:.75rem}.p-5{padding:1rem}.p-6{padding:1.25rem}"
-    ".mb-4{margin-bottom:.75rem}.mb-6{margin-bottom:1rem}.mt-1{margin-top:.25rem}.mt-3{margin-top:.5rem}"
-    ".space-y-1>*+*{margin-top:.25rem}.space-y-3>*+*{margin-top:.5rem}.space-y-4>*+*{margin-top:.75rem}"
-    ".gap-1{gap:.25rem}.gap-3{gap:.5rem}.gap-4{gap:.75rem}"
-    ".flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}"
-    ".grid{display:grid}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}"
-    ".h-10{height:2.25rem}.h-16{height:3.5rem}.w-10{width:2.25rem}"
-    ".h-2\\.5{height:.5rem}.w-2\\.5{width:.5rem}"
-    ".rounded{border-radius:.375rem}.rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.625rem}"
-    ".rounded-full{border-radius:9999px}"
-    "@media(min-width:640px){.sm\\:flex-row{flex-direction:row}.sm\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\\:w-auto{width:auto}}"
-    "@media(min-width:1024px){.lg\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}"
-    
-    /* SwitchGrid Dark Colors - Navy/Black base with Cyan accents */
-    ".bg-white{background:#141414}.bg-gray-50{background:#0f0f0f}.bg-gray-100{background:#1a1a1a}.bg-gray-900{background:#0a0a0a}"
-    ".bg-blue-50{background:rgba(0,217,255,0.08)}.bg-blue-600{background:#00d9ff}"
-    ".bg-emerald-50{background:rgba(16,185,129,0.08)}.bg-emerald-100{background:rgba(16,185,129,0.12)}"
-    ".bg-red-50{background:rgba(239,68,68,0.08)}.bg-red-100{background:rgba(239,68,68,0.12)}.bg-red-500{background:#ef4444}.bg-red-600{background:#dc2626}"
-    ".bg-purple-50{background:rgba(139,92,246,0.08)}.bg-orange-50{background:rgba(249,115,22,0.08)}"
-    
-    /* Text Colors - High contrast on dark */
-    ".text-white{color:#fff}.text-gray-400{color:#9ca3af}.text-gray-500{color:#6b7280}.text-gray-600{color:#a1a1aa}.text-gray-700{color:#d4d4d4}.text-gray-900{color:#e5e5e5}"
-    ".text-blue-400{color:#22d3ee}.text-blue-600{color:#00d9ff}.text-blue-700{color:#67e8f9}.text-blue-900{color:#cffafe}"
-    ".text-emerald-400{color:#34d399}.text-emerald-600{color:#10b981}.text-emerald-700{color:#6ee7b7}.text-emerald-800{color:#a7f3d0}"
-    ".text-red-400{color:#f87171}.text-red-500{color:#ef4444}.text-red-600{color:#f87171}.text-red-700{color:#fca5a5}.text-red-800{color:#fecaca}"
-    ".text-purple-400{color:#a78bfa}.text-purple-600{color:#8b5cf6}.text-purple-900{color:#ddd6fe}"
-    ".text-green-400{color:#4ade80}.text-green-600{color:#22c55e}.text-green-900{color:#bbf7d0}"
-    ".text-orange-400{color:#fb923c}.text-orange-600{color:#f97316}.text-orange-900{color:#fed7aa}"
-    ".text-yellow-400{color:#facc15}.text-yellow-600{color:#eab308}"
-    
-    /* Typography - Clean, professional */
-    ".font-mono{font-family:'SF Mono',Monaco,'Cascadia Code',monospace}"
-    ".font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}"
-    ".text-xs{font-size:.75rem}.text-sm{font-size:.8125rem}.text-lg{font-size:1.0625rem}.text-2xl{font-size:1.5rem}"
-    ".text-center{text-align:center}"
-    
-    /* Borders - Subtle on dark */
-    ".border{border-width:1px;border-style:solid}"
-    ".border-b{border-bottom-width:1px}"
-    ".border-gray-100{border-color:#1f1f1f}.border-gray-200{border-color:#262626}.border-gray-300{border-color:#333}.border-gray-700{border-color:#404040}.border-gray-800{border-color:#2a2a2a}"
-    ".border-blue-200{border-color:rgba(0,217,255,0.2)}.border-green-200{border-color:rgba(16,185,129,0.2)}"
-    
-    /* Components - Cards with subtle borders */
-    ".shadow-sm{box-shadow:0 1px 2px 0 rgba(0,0,0,0.3)}.shadow-lg{box-shadow:0 4px 6px -1px rgba(0,0,0,0.4)}"
-    ".sticky{position:sticky}.top-0{top:0}.z-50{z-index:50}"
-    ".overflow-hidden{overflow:hidden}"
-    ".cursor-pointer{cursor:pointer}"
-    ".hover\\:bg-gray-50:hover{background:#1a1a1a}.hover\\:bg-blue-100:hover{background:rgba(0,217,255,0.15)}.hover\\:bg-blue-700:hover{background:#06b6d4}.hover\\:bg-red-700:hover{background:#b91c1c}"
-    ".hover\\:underline:hover{text-decoration:underline}"
-    ".transition{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"
-    
-    /* Forms - Dark inputs */
-    "input[type=text],input[type=password],input[type=number]{width:100%;padding:.5rem .625rem;border:1px solid #333;border-radius:.375rem;font-size:.8125rem;background:#141414;color:#e5e5e5;transition:border-color .15s}"
-    "input:focus{outline:none;border-color:#00d9ff;box-shadow:0 0 0 2px rgba(0,217,255,0.15)}"
-    "label{display:block;font-size:.75rem;font-weight:600;color:#a1a1aa;margin-bottom:.375rem;text-transform:uppercase;letter-spacing:0.025em}"
-    
-    /* Buttons - Cyan accent */
-    "button{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem .875rem;border-radius:.375rem;font-size:.8125rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;letter-spacing:0.01em}"
-    "button:hover{opacity:.9;transform:translateY(-1px)}"
-    ".btn-primary{background:#00d9ff;color:#0a0a0a}"
-    ".btn-danger{background:#ef4444;color:#fff}"
-    
-    /* Custom utilities */
-    ".inline-flex{display:inline-flex}.gap-2{gap:.375rem}.ml-2{margin-left:.375rem}.ml-auto{margin-left:auto}"
-    ".px-2\\.5{padding-left:.5rem;padding-right:.5rem}.py-0\\.5{padding-top:.125rem;padding-bottom:.125rem}"
-    ".py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.375rem;padding-bottom:.375rem}"
-    ".px-3{padding-left:.625rem;padding-right:.625rem}.py-2{padding-top:.375rem;padding-bottom:.375rem}"
-    ".pb-3{padding-bottom:.625rem}"
-    ".inline-block{display:inline-block}"
-    ".w-full{width:100%}"
-    ".hidden{display:none}"
-    
-    /* Alerts - Dark mode */
-    ".alert{padding:.75rem;border-radius:.375rem;margin-bottom:.75rem;border:1px solid}"
-    ".alert-success{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.2);color:#34d399}"
-    ".alert-error{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);color:#f87171}"
-    ".alert-info{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.15);color:#22d3ee}"
-    
-    /* Status indicators */
-    ".status-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px}"
-    ".status-online{background:#10b981;box-shadow:0 0 4px #10b981}"
-    ".status-offline{background:#ef4444}"
-    "</style>";
-}
-
-// Legacy function - now uses SwitchGrid dark theme as default
+// Online CSS - Loads Tailwind CSS from CDN for full styling when internet is available
 String getOnlineCSS() {
-  return getSwitchGridDarkCSS();
+  return "<link href=\"https://cdn.tailwindcss.com\" rel=\"stylesheet\">"
+    "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap\" rel=\"stylesheet\">"
+    "<style>body{font-family:'Inter',system-ui,sans-serif}</style>";
 }
 
 // Detect if device is in online mode (WiFi connected to upstream network)
 bool isOnlineMode() {
   // Check if STA mode is connected to an upstream WiFi network
   // Note: AP mode (192.168.4.1) is NOT "online" - it's just serving local AP
-  return (WiFi.status() == WL_CONNECTED) && 
-         (WiFi.getMode() & WIFI_STA) && 
+  return (WiFi.status() == WL_CONNECTED) &&
+         (WiFi.getMode() & WIFI_STA) &&
          !(WiFi.getMode() & WIFI_AP);
 }
 
@@ -240,21 +156,21 @@ String getEmbeddedCSS() {
 String getWebPage(const String& path) {
   // OpenWatt Logo - Embedded SVG (works offline)
   String logo = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 48\" class=\"h-10 w-10\">";
-  logo += "<defs><linearGradient id=\"owGrad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" style=\"stop-color:#3b82f6;stop-opacity:1\" /><stop offset=\"100%\" style=\"stop-color:#1d4ed8;stop-opacity:1\" /></linearGradient></defs>";
+  logo += "<defs><linearGradient id=\"owGrad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" style=\"stop-color:var(--primary);stop-opacity:1\" /><stop offset=\"100%\" style=\"stop-color:var(--accent);stop-opacity:1\" /></linearGradient></defs>";
   logo += "<circle cx=\"24\" cy=\"24\" r=\"22\" fill=\"url(#owGrad)\" />";
   logo += "<path fill=\"white\" d=\"M28 12l-12 16h8l-4 16 16-20h-8l4-12z\" />";
   logo += "</svg>";
-  
+
   // Use theme CSS - always offline CSS for reliability
   String themeCSS = getThemeCSS();
-  
+
   // Note: We always use offline CSS to ensure the UI works regardless of connectivity
   // This ensures the device web interface is always functional
-  
+
   if (path == "/" || path == "/index.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
-    html += "<title>OpenWatt P1 Reader - Dashboard</title>";
+    html += "<title>" CUSTOMER_DISPLAY_NAME " P1 Reader - Dashboard</title>";
     html += themeCSS;
     html += "</head><body>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
@@ -398,7 +314,7 @@ String getWebPage(const String& path) {
     html += "</script></body></html>";
     return html;
   }
-  
+
   if (path == "/live" || path == "/live.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -440,7 +356,7 @@ String getWebPage(const String& path) {
     html += "</body></html>";
     return html;
   }
-  
+
   if (path == "/settings" || path == "/settings.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -471,6 +387,7 @@ String getWebPage(const String& path) {
     html += "<input type=password id=wifiPassword class=\"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500\"></div>";
     html += "<button type=submit class=\"w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium\">Save WiFi Settings</button>";
     html += "</form></div>";
+    #if MQTT_SETTINGS_UI_ENABLED
     html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">";
     html += "<h2 class=\"text-lg font-semibold text-gray-900 mb-4\">MQTT Configuration</h2>";
     html += "<form id=mqttForm class=space-y-4>";
@@ -481,17 +398,25 @@ String getWebPage(const String& path) {
     html += "<div><label class=\"block text-sm font-medium text-gray-700 mb-1\">Topic</label>";
     html += "<input type=text id=mqttTopic class=\"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500\"></div>";
     html += "<button type=submit class=\"w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium\">Save MQTT Settings</button>";
-    html += "</form></div></main>";
+    html += "</form></div>";
+    #endif
+    html += "</main>";
     html += "<script>fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('settingsVersion').textContent='FW '+d.firmware_version;});";
-    html += "fetch('/api/config').then(r=>r.json()).then(data=>{if(data.wifi&&data.wifi.ssid)document.getElementById('wifiSSID').value=data.wifi.ssid;if(data.mqtt){document.getElementById('mqttHost').value=data.mqtt.host||'';document.getElementById('mqttPort').value=data.mqtt.port||1883;document.getElementById('mqttTopic').value=data.mqtt.topic||'';}});";
-    html += "function getSignalIcon(rssi){if(rssi>=-50)return'<span class=text-green-600>▂▄▆█</span>';if(rssi>=-60)return'<span class=text-green-500>▂▄▆</span>';if(rssi>=-70)return'<span class=text-yellow-500>▂▄</span>';return'<span class=text-red-500>▂</span>';}";
-    html += "function scanWiFi(){console.log('Scanning...');const list=document.getElementById('wifiList');list.innerHTML='<div class=text-sm text-gray-500>Scanning...</div>';fetch('/api/config/wifiscan').then(r=>{console.log('Response:',r.status);return r.json();}).then(data=>{console.log('Data:',data);if(data.error){list.innerHTML='<div class=text-sm text-red-600>'+data.error+'</div>';return;}const nets=data.networks||[];if(nets.length===0){list.innerHTML='<div class=text-sm text-gray-500>No networks found</div>';return;}list.innerHTML=nets.map(n=>'<div class=wifi-row flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer rounded text-sm data-ssid='+(n.ssid||'')+'><span class=font-medium>'+(n.ssid||'')+'</span><span class=text-gray-400>'+getSignalIcon(n.rssi)+'</span></div>').join('');list.querySelectorAll('.wifi-row').forEach(el=>{el.onclick=()=>{document.getElementById('wifiSSID').value=el.getAttribute('data-ssid')||'';list.innerHTML='';};});}).catch(err=>{console.error('Error:',err);list.innerHTML='<div class=text-sm text-red-600>Scan failed: '+err+'</div>';});}";
+    html += "fetch('/api/config').then(r=>r.json()).then(data=>{if(data.wifi&&data.wifi.ssid)document.getElementById('wifiSSID').value=data.wifi.ssid;";
+    #if MQTT_SETTINGS_UI_ENABLED
+    html += "if(data.mqtt){document.getElementById('mqttHost').value=data.mqtt.host||'';document.getElementById('mqttPort').value=data.mqtt.port||1883;document.getElementById('mqttTopic').value=data.mqtt.topic||'';}";
+    #endif
+    html += "});";
+    html += "function scanWiFi(){const list=document.getElementById('wifiList');list.innerHTML='<div class=text-sm text-gray-500>Scanning...</div>';fetch('/api/wifiscan').then(r=>r.json()).then(data=>{if(data.error){list.innerHTML='<div class=text-sm text-red-600>'+data.error+'</div>';return;}const nets=data.networks||[];if(nets.length===0){list.innerHTML='<div class=text-sm text-gray-500>No networks found</div>';return;}const getSignalIcon=(r)=>{if(r>=-50)return'📶 excellent';if(r>=-60)return'📶 good';if(r>=-70)return'📶 fair';return'📶 weak';};list.innerHTML=nets.map(n=>'<div class=\"wifi-row p-2 hover:bg-gray-50 cursor-pointer rounded text-sm\" data-ssid=\"'+(n.ssid||'')+'\"><span class=\"font-medium\">'+(n.ssid||'')+'</span><span class=\"text-gray-400 ml-2\">'+getSignalIcon(n.rssi)+'</span></div>').join('');list.querySelectorAll('.wifi-row').forEach(el=>{el.onclick=()=>{document.getElementById('wifiSSID').value=el.getAttribute('data-ssid')||'';};});}).catch(()=>{list.innerHTML='<div class=text-sm text-red-600>Scan failed</div>';});}";
     html += "document.getElementById('wifiForm').addEventListener('submit',(e)=>{e.preventDefault();fetch('/api/config/wifi',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({wifi:{ssid:document.getElementById('wifiSSID').value,password:document.getElementById('wifiPassword').value}})}).then(()=>{document.getElementById('message').innerHTML='<div class=\"mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-lg\">WiFi saved! Restarting...</div>';setTimeout(()=>window.location.href='/',2000);});});";
-    html += "document.getElementById('mqttForm').addEventListener('submit',(e)=>{e.preventDefault();fetch('/api/config/mqtt',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mqtt:{host:document.getElementById('mqttHost').value,port:parseInt(document.getElementById('mqttPort').value),topic:document.getElementById('mqttTopic').value}})}).then(()=>{document.getElementById('message').innerHTML='<div class=\"mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-lg\">MQTT settings saved!</div>';});});</script>";
+    #if MQTT_SETTINGS_UI_ENABLED
+    html += "document.getElementById('mqttForm').addEventListener('submit',(e)=>{e.preventDefault();fetch('/api/config/mqtt',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mqtt:{host:document.getElementById('mqttHost').value,port:parseInt(document.getElementById('mqttPort').value),topic:document.getElementById('mqttTopic').value}})}).then(()=>{document.getElementById('message').innerHTML='<div class=\"mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-lg\">MQTT settings saved!</div>';});});";
+    #endif
+    html += "</script>";
     html += "</body></html>";
     return html;
   }
-  
+
   if (path == "/system" || path == "/system.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -520,12 +445,12 @@ String getWebPage(const String& path) {
     html += "<button onclick=reboot() class=\"inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium\">Reboot Device</button>";
     html += "<button onclick=factoryReset() class=\"inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium\">Factory Reset</button>";
     html += "</div></div></main>";
-    html += "<script>fetch('/api/system').then(r=>r.json()).then(data=>{document.getElementById('systemVersion').textContent='FW '+data.firmware_version;document.getElementById('systemInfo').innerHTML='<div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Firmware</span><span class=font-medium>'+data.firmware_version+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Device ID</span><span class=font-medium>'+data.device_id+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Serial</span><span class=font-medium>'+data.serial_number+'</span></div><div class=\"flex justify-between py-2\"><span class=text-gray-600>API URL</span><a href='+window.location.origin+'/api/system class=text-blue-600 hover:underline font-medium>'+window.location.origin+'</a></div>';});";
+    html += "<script>fetch('/api/system').then(r=>r.json()).then(data=>{document.getElementById('systemVersion').textContent='FW '+data.firmware_version;document.getElementById('systemInfo').innerHTML='<div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Firmware</span><span class=font-medium>'+data.firmware_version+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Customer</span><span class=font-medium>'+data.display_name+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Fingerprint</span><span class=font-medium>'+data.fingerprint+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Device ID</span><span class=font-medium>'+data.device_id+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Serial</span><span class=font-medium>'+data.serial_number+'</span></div><div class=\"flex justify-between py-2\"><span class=text-gray-600>API URL</span><a href='+window.location.origin+'/api/system class=text-blue-600 hover:underline font-medium>'+window.location.origin+'</a></div>';});";
     html += "function reboot(){if(confirm('Reboot device?'))fetch('/api/system/reboot',{method:'PATCH'});}";
     html += "function factoryReset(){if(confirm('WARNING: This will erase all settings!'))fetch('/api/system/factory_reset',{method:'PATCH'});}</script>";
     html += "</body></html>";
     return html;
   }
-  
+
   return "";
 }

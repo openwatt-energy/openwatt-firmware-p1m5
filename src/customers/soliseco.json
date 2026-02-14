@@ -1,0 +1,23 @@
+{
+  "customer": "soliseco",
+  "display_name": "SolisEco",
+  "fingerprint_default": "bert",
+  "ap_ssid_prefix": "SolisEco",
+  "salt_string": "CHANGE_ME_SALT",
+  "mqtt": {
+    "broker_host": "mqtt.example.com",
+    "broker_port": 8883,
+    "topic_prefix": "P1M5/",
+    "publish_interval_ms": 5000
+  },
+  "features": {
+    "json_api_enabled": true,
+    "mqtt_settings_ui": false
+  },
+  "theme": {
+    "primary": "#22c55e",
+    "background": "#ffffff",
+    "text": "#111827",
+    "accent": "#16a34a"
+  }
+}
