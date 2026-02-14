@@ -57,27 +57,27 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
   WebAPI::prefs = &prefs;
   WebAPI::deviceId = devId;
   WebAPI::serialNumber = serial;
-  
+
   // GET /api/config
   server.on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
-    
+
     // Read values (keys should exist from initialization, so no errors)
     doc["email"] = getNvsString("email");
-    
+
     if (WiFiManager::isConnected()) {
       doc["dongle_ip"] = WiFiManager::getIP();
     } else {
       doc["dongle_ip"] = WiFiManager::getAPIP();
     }
-    
+
     JsonObject wifi = doc["wifi"].to<JsonObject>();
     if (WiFiManager::isConnected()) {
       wifi["ssid"] = WiFi.SSID();
     } else {
       wifi["ssid"] = WiFiManager::getSavedSSID(*WebAPI::prefs);
     }
-    
+
     JsonObject mqtt = doc["mqtt"].to<JsonObject>();
     #if ENABLE_MQTT
     MQTTConfig mqttCfg = MQTTClient::getConfig();
@@ -89,16 +89,16 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     mqtt["port"] = 1883;
     mqtt["topic"] = "";
     #endif
-    
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
   });
-  
+
   // GET /api/state
   server.on("/api/state", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
-    
+
     doc["wifi_connected"] = WiFiManager::isConnected();
     doc["meter_connected"] = P1Reader::isConnected();
     #if ENABLE_MQTT
@@ -107,32 +107,32 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["cloud_connected"] = false;
     #endif
     doc["ap_mode"] = (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA);
-    
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
   });
-  
+
   // GET /api/system
   server.on("/api/system", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
-    
+
     doc["firmware_version"] = FIRMWARE_VERSION;
     doc["serial_number"] = WebAPI::serialNumber;
     doc["device_id"] = WebAPI::deviceId;
-    
+
     // Customer info
     doc["customer"] = CUSTOMER_NAME;
     doc["display_name"] = CUSTOMER_DISPLAY_NAME;
     doc["fingerprint"] = getFingerprint();
-    
+
     // Theme colors
     JsonObject theme = doc["theme"].to<JsonObject>();
     theme["primary"] = THEME_PRIMARY;
     theme["background"] = THEME_BACKGROUND;
     theme["text"] = THEME_TEXT;
     theme["accent"] = THEME_ACCENT;
-    
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
@@ -178,12 +178,12 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     serializeJson(doc, response);
     request->send(200, "application/json", response);
   });
-  
+
   // GET /api/v1/data - Home Assistant compatible energy data endpoint
   server.on("/api/v1/data", HTTP_GET, [](AsyncWebServerRequest *request){
     const P1Data& d = WebAPI::latestData;
     JsonDocument doc;
-    
+
     // WiFi information
     if (WiFiManager::isConnected()) {
       doc["wifi_ssid"] = WiFi.SSID();
@@ -198,21 +198,21 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       doc["wifi_ssid"] = "";
       doc["wifi_strength"] = 0;
     }
-    
+
     // SMR version - derive from meter model if available
     if (d.meterModel.indexOf("SMR") >= 0 || d.meterModel.indexOf("50") >= 0) {
       doc["smr_version"] = 50;
     } else {
       doc["smr_version"] = 40;  // Default to 4.0 if unknown
     }
-    
+
     // Meter information
     doc["meter_model"] = d.meterModel;
     doc["unique_id"] = d.equipmentId;
-    
+
     // Tariff
     doc["active_tariff"] = d.tariffIndicator;
-    
+
     // Energy totals (kWh)
     doc["total_power_import_kwh"] = d.consumptionT1 + d.consumptionT2 + d.consumptionT3 + d.consumptionT4 + d.consumptionT5;
     doc["total_power_import_t1_kwh"] = d.consumptionT1;
@@ -221,7 +221,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     if (d.consumptionT3 > 0) doc["total_power_import_t3_kwh"] = d.consumptionT3;
     if (d.consumptionT4 > 0) doc["total_power_import_t4_kwh"] = d.consumptionT4;
     if (d.consumptionT5 > 0) doc["total_power_import_t5_kwh"] = d.consumptionT5;
-    
+
     doc["total_power_export_kwh"] = d.productionT1 + d.productionT2 + d.productionT3 + d.productionT4 + d.productionT5;
     doc["total_power_export_t1_kwh"] = d.productionT1;
     doc["total_power_export_t2_kwh"] = d.productionT2;
@@ -229,13 +229,13 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     if (d.productionT3 > 0) doc["total_power_export_t3_kwh"] = d.productionT3;
     if (d.productionT4 > 0) doc["total_power_export_t4_kwh"] = d.productionT4;
     if (d.productionT5 > 0) doc["total_power_export_t5_kwh"] = d.productionT5;
-    
+
     // Active power (convert kW to W)
     doc["active_power_w"] = d.powerConsumed * 1000;
     doc["active_power_l1_w"] = d.powerImportL1 * 1000;
     doc["active_power_l2_w"] = d.powerImportL2 * 1000;
     doc["active_power_l3_w"] = d.powerImportL3 * 1000;
-    
+
     // Voltage and current
     doc["active_voltage_l1_v"] = d.voltageL1;
     doc["active_voltage_l2_v"] = d.voltageL2;
@@ -244,12 +244,12 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["active_current_l2_a"] = d.currentL2;
     doc["active_current_l3_a"] = d.currentL3;
     doc["active_current_a"] = d.currentTotal;
-    
+
     // Average and peak power (keep misspelled "montly" for compatibility)
     doc["active_power_average_w"] = d.avgDemand * 1000;
     doc["montly_power_peak_w"] = d.maxDemandMonth * 1000;
     doc["monthly_power_peak_w"] = d.maxDemandMonth * 1000;  // Correct spelling
-    
+
     // Parse monthly peak timestamp from DSMR format (YYMMDDhhmmss) to timestamp
     if (d.maxDemandTimestamp.length() >= 12) {
       // Convert YYMMDDhhmmss to YYYYMMDDhhmmss format
@@ -265,15 +265,15 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       doc["montly_power_peak_timestamp"] = "";
       doc["monthly_power_peak_timestamp"] = "";
     }
-    
+
     // External devices array (empty for now)
     JsonArray external = doc["external"].to<JsonArray>();
-    
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
   });
-  
+
   // GET /api/meter/raw - Raw P1 telegram as plain text
   server.on("/api/meter/raw", HTTP_GET, [](AsyncWebServerRequest *request){
     String raw = P1Reader::getLastRawTelegram();
@@ -283,7 +283,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       request->send(200, "text/plain", raw);
     }
   });
-  
+
   // PATCH /api/config/wifi - body can arrive in chunks, so accumulate then parse once
   static String wifiPatchBody;
   server.on("/api/config/wifi", HTTP_PATCH, [](AsyncWebServerRequest *request){}, NULL,
@@ -320,48 +320,48 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       ESP.restart();
     }
   );
-  
+
   // PATCH /api/config/mqtt
   server.on("/api/config/mqtt", HTTP_PATCH, [](AsyncWebServerRequest *request){}, NULL,
     [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
       #if ENABLE_MQTT
       JsonDocument doc;
       DeserializationError error = deserializeJson(doc, (const char*)data);
-      
+
       if (!error && doc["mqtt"].is<JsonObject>()) {
         JsonObject mqtt = doc["mqtt"];
-        
+
         MQTTConfig config;
         config.host = mqtt["host"] | "";
         config.port = mqtt["port"] | DEFAULT_MQTT_PORT;
         config.topic = mqtt["topic"] | "";
-        
+
         MQTTClient::setConfig(config);
         MQTTClient::saveConfig(*WebAPI::prefs);
-        
+
         request->send(200, "application/json", "{\"status\":\"ok\"}");
         return;
       }
-      
+
       request->send(400, "application/json", "{\"error\":\"Invalid request\"}");
       #else
       request->send(503, "application/json", "{\"error\":\"MQTT is disabled\"}");
       #endif
     }
   );
-  
-  // GET /api/config/wifiscan - Simple and reliable WiFi scan
-  server.on("/api/config/wifiscan", HTTP_GET, [](AsyncWebServerRequest *request){
+
+  // GET /api/wifiscan - Simple and reliable WiFi scan
+  server.on("/api/wifiscan", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
     JsonArray networks = doc["networks"].to<JsonArray>();
-    
+
     SerialConsole::println("WiFi scan: Starting...");
-    
+
     // Simple approach: Just try to scan directly
     // ESP32 can scan in any mode, no need to switch modes
     int n = WiFi.scanNetworks();
     SerialConsole::println("WiFi scan: Found " + String(n) + " networks");
-    
+
     if (n < 0) {
       // Scan failed - try once more after a short delay
       SerialConsole::println("WiFi scan: First attempt failed, retrying...");
@@ -369,7 +369,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       n = WiFi.scanNetworks();
       SerialConsole::println("WiFi scan: Retry found " + String(n) + " networks");
     }
-    
+
     if (n < 0) {
       doc["error"] = "WiFi scan failed";
       doc["status"] = "failed";
@@ -383,36 +383,36 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       doc["status"] = "complete";
       doc["count"] = n;
       int validCount = 0;
-      
+
       for (int i = 0; i < n; i++) {
         String ssid = WiFi.SSID(i);
         int32_t rssi = WiFi.RSSI(i);
-        
+
         // Skip empty SSIDs
         if (ssid.length() == 0) {
           continue;
         }
-        
+
         JsonObject net = networks.add<JsonObject>();
         net["ssid"] = ssid;
         net["rssi"] = rssi;
         net["encryption"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "encrypted";
         net["channel"] = WiFi.channel(i);
         validCount++;
-        
+
         // Log for debugging
         if (validCount <= 5) {
           SerialConsole::println("  [" + String(i) + "] " + ssid + " " + String(rssi) + " dBm");
         }
       }
-      
+
       doc["returned_count"] = validCount;
       SerialConsole::println("WiFi scan: Returned " + String(validCount) + " valid networks");
     }
-    
+
     // Clean up
     WiFi.scanDelete();
-    
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
@@ -441,7 +441,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     String r; serializeJson(doc, r);
     request->send(200, "application/json", r);
   });
-  
+
   // PATCH /api/system/reboot
   server.on("/api/system/reboot", HTTP_PATCH, [](AsyncWebServerRequest *request){
     request->send(200, "application/json", "{\"status\":\"rebooting\"}");
@@ -459,7 +459,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     delay(200);
     ESP.restart();
   });
-  
+
   // POST /api/system/ota-pull - download and flash from URL. Query: url= (e.g. ?url=http://192.0.2.1:28214/firmware.bin)
   server.on("/api/system/ota-pull", HTTP_POST, [](AsyncWebServerRequest *request){
     String url = request->hasParam("url", true) ? request->getParam("url", true)->value() : "";
@@ -479,7 +479,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
-    
+
     // Trigger OTA check (non-blocking, will reboot if update found)
     OTAUpdate::checkUpdate();
   });
@@ -493,7 +493,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     request->send(503, "application/json", response);
   });
   #endif
-  
+
   // PATCH /api/system/factory_reset
   server.on("/api/system/factory_reset", HTTP_PATCH, [](AsyncWebServerRequest *request){
     WebAPI::prefs->clear();
@@ -501,33 +501,33 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     delay(1000);
     ESP.restart();
   });
-  
+
   // GET /api/knock
   server.on("/api/knock", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "application/json", "{\"status\":\"alive\"}");
   });
-  
+
   // Serve Web UI pages
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     String html = getWebPage("/");
     request->send(200, "text/html", html);
   });
-  
+
   server.on("/live", HTTP_GET, [](AsyncWebServerRequest *request){
     String html = getWebPage("/live");
     request->send(200, "text/html", html);
   });
-  
+
   server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request){
     String html = getWebPage("/settings");
     request->send(200, "text/html", html);
   });
-  
+
   server.on("/system", HTTP_GET, [](AsyncWebServerRequest *request){
     String html = getWebPage("/system");
     request->send(200, "text/html", html);
   });
-  
+
   // GET /api/debug/p1 - Debug P1 serial statistics
   server.on("/api/debug/p1", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
@@ -540,12 +540,12 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["telegram_count"] = P1Reader::getTelegramCount();
     doc["meter_connected"] = P1Reader::isConnected();
     doc["last_telegram"] = P1Reader::getLastRawTelegram();
-    
+
     String response;
     serializeJson(doc, response);
     request->send(200, "application/json", response);
   });
-  
+
   server.onNotFound([](AsyncWebServerRequest *request){
     request->send(404, "text/plain", "Not found");
   });

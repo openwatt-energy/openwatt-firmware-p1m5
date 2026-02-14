@@ -22,7 +22,7 @@ String getOfflineCSS() {
     /* CSS Reset and Base */
     "*{box-sizing:border-box;margin:0;padding:0}"
     "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}"
-    
+
     /* Layout - Minimal but functional */
     ".max-w-7xl{max-width:80rem;margin:0 auto;padding:0 1rem}"
     ".max-w-3xl{max-width:48rem;margin:0 auto;padding:0 1rem}"
@@ -41,7 +41,7 @@ String getOfflineCSS() {
     ".rounded-full{border-radius:9999px}"
     "@media(min-width:640px){.sm\\:flex-row{flex-direction:row}.sm\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\\:w-auto{width:auto}}"
     "@media(min-width:1024px){.lg\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}"
-    
+
     /* Colors */
     ".bg-white{background:#fff}.bg-gray-50{background:#f9fafb}.bg-gray-100{background:#f3f4f6}.bg-gray-900{background:#111827}"
     ".bg-blue-50{background:#eff6ff}.bg-blue-600{background:#2563eb}"
@@ -57,7 +57,7 @@ String getOfflineCSS() {
     ".to-purple-100{--tw-gradient-to:#f3e8ff}"
     ".from-orange-50{--tw-gradient-from:#fff7ed;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgb(255 247 237 / 0))}"
     ".to-orange-100{--tw-gradient-to:#ffedd5}"
-    
+
     /* Text Colors */
     ".text-white{color:#fff}.text-gray-400{color:#9ca3af}.text-gray-500{color:#6b7280}.text-gray-600{color:#4b5563}.text-gray-700{color:#374151}.text-gray-900{color:#111827}"
     ".text-blue-400{color:#60a5fa}.text-blue-600{color:#2563eb}.text-blue-700{color:#1d4ed8}.text-blue-900{color:#1e3a8a}"
@@ -70,19 +70,19 @@ String getOfflineCSS() {
     ".text-pink-400{color:#f472b6}.text-pink-600{color:#db2777}"
     ".text-cyan-400{color:#22d3ee}.text-teal-400{color:#2dd4bf}.text-amber-400{color:#fbbf24}"
     ".text-blue-500{color:#3b82f6}.text-emerald-500{color:#10b981}"
-    
+
     /* Typography */
     ".font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}"
     ".font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}"
     ".text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-lg{font-size:1.125rem}.text-2xl{font-size:1.5rem}"
     ".text-center{text-align:center}"
-    
+
     /* Borders */
     ".border{border-width:1px;border-style:solid}"
     ".border-b{border-bottom-width:1px}"
     ".border-gray-100{border-color:#f3f4f6}.border-gray-200{border-color:#e5e7eb}.border-gray-300{border-color:#d1d5db}.border-gray-700{border-color:#374151}.border-gray-800{border-color:#1f2937}"
     ".border-blue-200{border-color:#bfdbfe}.border-green-200{border-color:#bbf7d0}.border-purple-200{border-color:#e9d5ff}.border-orange-200{border-color:#fed7aa}"
-    
+
     /* Components */
     ".shadow-sm{box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.shadow-lg{box-shadow:0 10px 15px -3px rgb(0 0 0 / .1)}"
     ".sticky{position:sticky}.top-0{top:0}.z-50{z-index:50}"
@@ -91,18 +91,18 @@ String getOfflineCSS() {
     ".hover\\:bg-gray-50:hover{background:#f9fafb}.hover\\:bg-blue-100:hover{background:#dbeafe}.hover\\:bg-blue-700:hover{background:#1d4ed8}.hover\\:bg-red-700:hover{background:#b91c1c}"
     ".hover\\:underline:hover{text-decoration:underline}"
     ".transition{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"
-    
+
     /* Forms */
     "input[type=text],input[type=password],input[type=number]{width:100%;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:.875rem}"
     "input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}"
     "label{display:block;font-size:.875rem;font-weight:500;color:#374151;margin-bottom:.25rem}"
-    
+
     /* Buttons */
     "button{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .15s}"
     "button:hover{opacity:.9}"
     ".btn-primary{background:var(--primary);color:#fff}"
     ".btn-danger{background:#dc2626;color:#fff}"
-    
+
     /* Custom utilities */
     ".inline-flex{display:inline-flex}.gap-2{gap:.5rem}.ml-2{margin-left:.5rem}.ml-auto{margin-left:auto}"
     ".px-2\\.5{padding-left:.625rem;padding-right:.625rem}.py-0\\.5{padding-top:.125rem;padding-bottom:.125rem}"
@@ -112,13 +112,13 @@ String getOfflineCSS() {
     ".inline-block{display:inline-block}"
     ".w-full{width:100%}"
     ".hidden{display:none}"
-    
+
     /* Alerts/Messages */
     ".alert{padding:1rem;border-radius:.5rem;margin-bottom:1rem}"
     ".alert-success{background:#ecfdf5;color:#065f46}"
     ".alert-error{background:#fef2f2;color:#991b1b}"
     ".alert-info{background:#eff6ff;color:#1e40af}"
-    
+
     /* Offline mode indicator */
     ".offline-mode{background:#fef3c7;border:1px solid #f59e0b;padding:0.75rem;border-radius:0.5rem;margin-bottom:1rem;color:#92400e}"
     "</style>";
@@ -135,8 +135,8 @@ String getOnlineCSS() {
 bool isOnlineMode() {
   // Check if STA mode is connected to an upstream WiFi network
   // Note: AP mode (192.168.4.1) is NOT "online" - it's just serving local AP
-  return (WiFi.status() == WL_CONNECTED) && 
-         (WiFi.getMode() & WIFI_STA) && 
+  return (WiFi.status() == WL_CONNECTED) &&
+         (WiFi.getMode() & WIFI_STA) &&
          !(WiFi.getMode() & WIFI_AP);
 }
 
@@ -160,13 +160,13 @@ String getWebPage(const String& path) {
   logo += "<circle cx=\"24\" cy=\"24\" r=\"22\" fill=\"url(#owGrad)\" />";
   logo += "<path fill=\"white\" d=\"M28 12l-12 16h8l-4 16 16-20h-8l4-12z\" />";
   logo += "</svg>";
-  
+
   // Use theme CSS - always offline CSS for reliability
   String themeCSS = getThemeCSS();
-  
+
   // Note: We always use offline CSS to ensure the UI works regardless of connectivity
   // This ensures the device web interface is always functional
-  
+
   if (path == "/" || path == "/index.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -314,7 +314,7 @@ String getWebPage(const String& path) {
     html += "</script></body></html>";
     return html;
   }
-  
+
   if (path == "/live" || path == "/live.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -356,7 +356,7 @@ String getWebPage(const String& path) {
     html += "</body></html>";
     return html;
   }
-  
+
   if (path == "/settings" || path == "/settings.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -387,6 +387,7 @@ String getWebPage(const String& path) {
     html += "<input type=password id=wifiPassword class=\"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500\"></div>";
     html += "<button type=submit class=\"w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium\">Save WiFi Settings</button>";
     html += "</form></div>";
+    #if MQTT_SETTINGS_UI_ENABLED
     html += "<div class=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">";
     html += "<h2 class=\"text-lg font-semibold text-gray-900 mb-4\">MQTT Configuration</h2>";
     html += "<form id=mqttForm class=space-y-4>";
@@ -397,16 +398,25 @@ String getWebPage(const String& path) {
     html += "<div><label class=\"block text-sm font-medium text-gray-700 mb-1\">Topic</label>";
     html += "<input type=text id=mqttTopic class=\"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500\"></div>";
     html += "<button type=submit class=\"w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium\">Save MQTT Settings</button>";
-    html += "</form></div></main>";
+    html += "</form></div>";
+    #endif
+    html += "</main>";
     html += "<script>fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('settingsVersion').textContent='FW '+d.firmware_version;});";
-    html += "fetch('/api/config').then(r=>r.json()).then(data=>{if(data.wifi&&data.wifi.ssid)document.getElementById('wifiSSID').value=data.wifi.ssid;if(data.mqtt){document.getElementById('mqttHost').value=data.mqtt.host||'';document.getElementById('mqttPort').value=data.mqtt.port||1883;document.getElementById('mqttTopic').value=data.mqtt.topic||'';}});";
-    html += "function scanWiFi(){const list=document.getElementById('wifiList');list.innerHTML='<div class=text-sm text-gray-500>Scanning...</div>';fetch('/api/config/wifiscan').then(r=>r.json()).then(data=>{if(data.error){list.innerHTML='<div class=text-sm text-red-600>'+data.error+'</div>';return;}const nets=data.networks||[];if(nets.length===0){list.innerHTML='<div class=text-sm text-gray-500>No networks found</div>';return;}list.innerHTML=nets.map(n=>'<div class=wifi-row p-2 hover:bg-gray-50 cursor-pointer rounded text-sm data-ssid='+(n.ssid||'')+'><span class=font-medium>'+(n.ssid||'')+'</span><span class=text-gray-400 ml-2>'+(n.rssi||0)+' dBm</span></div>').join('');list.querySelectorAll('.wifi-row').forEach(el=>{el.onclick=()=>{document.getElementById('wifiSSID').value=el.getAttribute('data-ssid')||'';};});}).catch(()=>{list.innerHTML='<div class=text-sm text-red-600>Scan failed</div>';});}";
+    html += "fetch('/api/config').then(r=>r.json()).then(data=>{if(data.wifi&&data.wifi.ssid)document.getElementById('wifiSSID').value=data.wifi.ssid;";
+    #if MQTT_SETTINGS_UI_ENABLED
+    html += "if(data.mqtt){document.getElementById('mqttHost').value=data.mqtt.host||'';document.getElementById('mqttPort').value=data.mqtt.port||1883;document.getElementById('mqttTopic').value=data.mqtt.topic||'';}";
+    #endif
+    html += "});";
+    html += "function scanWiFi(){const list=document.getElementById('wifiList');list.innerHTML='<div class=text-sm text-gray-500>Scanning...</div>';fetch('/api/wifiscan').then(r=>r.json()).then(data=>{if(data.error){list.innerHTML='<div class=text-sm text-red-600>'+data.error+'</div>';return;}const nets=data.networks||[];if(nets.length===0){list.innerHTML='<div class=text-sm text-gray-500>No networks found</div>';return;}const getSignalIcon=(r)=>{if(r>=-50)return'📶 excellent';if(r>=-60)return'📶 good';if(r>=-70)return'📶 fair';return'📶 weak';};list.innerHTML=nets.map(n=>'<div class=\"wifi-row p-2 hover:bg-gray-50 cursor-pointer rounded text-sm\" data-ssid=\"'+(n.ssid||'')+'\"><span class=\"font-medium\">'+(n.ssid||'')+'</span><span class=\"text-gray-400 ml-2\">'+getSignalIcon(n.rssi)+'</span></div>').join('');list.querySelectorAll('.wifi-row').forEach(el=>{el.onclick=()=>{document.getElementById('wifiSSID').value=el.getAttribute('data-ssid')||'';};});}).catch(()=>{list.innerHTML='<div class=text-sm text-red-600>Scan failed</div>';});}";
     html += "document.getElementById('wifiForm').addEventListener('submit',(e)=>{e.preventDefault();fetch('/api/config/wifi',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({wifi:{ssid:document.getElementById('wifiSSID').value,password:document.getElementById('wifiPassword').value}})}).then(()=>{document.getElementById('message').innerHTML='<div class=\"mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-lg\">WiFi saved! Restarting...</div>';setTimeout(()=>window.location.href='/',2000);});});";
-    html += "document.getElementById('mqttForm').addEventListener('submit',(e)=>{e.preventDefault();fetch('/api/config/mqtt',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mqtt:{host:document.getElementById('mqttHost').value,port:parseInt(document.getElementById('mqttPort').value),topic:document.getElementById('mqttTopic').value}})}).then(()=>{document.getElementById('message').innerHTML='<div class=\"mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-lg\">MQTT settings saved!</div>';});});</script>";
+    #if MQTT_SETTINGS_UI_ENABLED
+    html += "document.getElementById('mqttForm').addEventListener('submit',(e)=>{e.preventDefault();fetch('/api/config/mqtt',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mqtt:{host:document.getElementById('mqttHost').value,port:parseInt(document.getElementById('mqttPort').value),topic:document.getElementById('mqttTopic').value}})}).then(()=>{document.getElementById('message').innerHTML='<div class=\"mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-lg\">MQTT settings saved!</div>';});});";
+    #endif
+    html += "</script>";
     html += "</body></html>";
     return html;
   }
-  
+
   if (path == "/system" || path == "/system.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
@@ -441,6 +451,6 @@ String getWebPage(const String& path) {
     html += "</body></html>";
     return html;
   }
-  
+
   return "";
 }
