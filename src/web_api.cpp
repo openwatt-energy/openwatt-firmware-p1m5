@@ -356,14 +356,13 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     JsonArray networks = doc["networks"].to<JsonArray>();
 
     SerialConsole::println("WiFi scan: Starting...");
-
-    // Simple approach: Just try to scan directly
-    // ESP32 can scan in any mode, no need to switch modes
+    
+    // Just scan - ESP32 can scan in any mode
     int n = WiFi.scanNetworks();
     SerialConsole::println("WiFi scan: Found " + String(n) + " networks");
 
     if (n < 0) {
-      // Scan failed - try once more after a short delay
+      // Scan failed - try once more after a delay
       SerialConsole::println("WiFi scan: First attempt failed, retrying...");
       delay(500);
       n = WiFi.scanNetworks();
@@ -447,6 +446,17 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     request->send(200, "application/json", "{\"status\":\"rebooting\"}");
     delay(1000);
     ESP.restart();
+  });
+
+  // PATCH /api/system/clear-wifi - clear WiFi credentials and stop reconnecting
+  server.on("/api/system/clear-wifi", HTTP_PATCH, [](AsyncWebServerRequest *request){
+    Preferences prefs;
+    prefs.begin("openwatt", false);
+    prefs.remove("wifi_ssid");
+    prefs.remove("wifi_password");
+    prefs.end();
+    WiFi.disconnect();
+    request->send(200, "application/json", "{\"status\":\"WiFi credentials cleared\"}");
   });
 
   // PATCH /api/system/bootloader - try to enter serial bootloader (GPIO0 low + reset). Run esptool right after.

@@ -16,6 +16,7 @@ class WiFiManager {
 public:
   static void begin(Preferences& prefs, const String& deviceId);
   static void connect(const String& ssid, const String& password);
+  static void reconnect(Preferences& prefs);
   static void scanNetworks();
   static bool isConnected();
   static String getIP();
@@ -27,6 +28,10 @@ public:
   static WiFiConfig loadCredentials(Preferences& prefs);
   /** Saved SSID from NVS (for API display when not connected). */
   static String getSavedSSID(Preferences& prefs);
+  /** Check WiFi status and handle connection state machine */
+  static void checkStatus(Preferences& prefs);
+  /** Enable AP mode (for when user needs to reconfigure) */
+  static void enableAP();
 };
 
 #endif

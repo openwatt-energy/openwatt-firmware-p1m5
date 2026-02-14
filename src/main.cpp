@@ -577,6 +577,14 @@ void setup() {
     delay(1000);
   }
 
+  // Read reboot count from NVS
+  nvs_handle_t h;
+  int rebootCount = 0;
+  if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
+    nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, &rebootCount);
+    nvs_close(h);
+  }
+
   // Generate device ID and serial number
   state.deviceId = getDeviceId();
   state.serialNumber = getDeviceName();
@@ -584,6 +592,7 @@ void setup() {
   SerialConsole::println("Device Info:");
   SerialConsole::println("  ID: " + state.deviceId);
   SerialConsole::println("  Serial: " + state.serialNumber);
+  SerialConsole::println("  Reboots: " + String(rebootCount));
   SerialConsole::println("");
   yield();
   delay(100);
@@ -718,22 +727,11 @@ void loop() {
   ws.cleanupClients();
   yield();
 
-  // Check WiFi connection status periodically
+  // Check WiFi status (state machine handles all connection logic)
   static unsigned long lastWiFiCheck = 0;
-  if (millis() - lastWiFiCheck > 10000) {
+  if (millis() - lastWiFiCheck > 1000) {
     lastWiFiCheck = millis();
-    if (WiFiManager::isConnected() && WiFiManager::getIP().length() > 0) {
-      SerialConsole::println("WiFi connected: " + WiFiManager::getIP());
-      SerialConsole::flush();
-      // WiFi connected - update LED status
-      bool meterConnected = P1Reader::isConnected();
-      bool cloudConnected = MQTTClient::isConnected();
-      LEDHandler::setWiFiStatus(true, meterConnected, cloudConnected);
-    } else {
-      // WiFi not connected - ensure AP mode LED is on
-      bool meterConnected = P1Reader::isConnected();
-      LEDHandler::setAPMode(true, meterConnected, false);
-    }
+    WiFiManager::checkStatus(preferences);
     yield();
   }
 

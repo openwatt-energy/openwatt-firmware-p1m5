@@ -14,9 +14,9 @@
 // Firmware version (bump on release: minor = features, patch = fixes)
 // If FIRMWARE_VERSION_SUFFIX is defined (from customer_config.h), append it
 #ifdef FIRMWARE_VERSION_SUFFIX
-  #define FIRMWARE_VERSION "v1.0.25" FIRMWARE_VERSION_SUFFIX
+  #define FIRMWARE_VERSION "v1.0.34" FIRMWARE_VERSION_SUFFIX
 #else
-  #define FIRMWARE_VERSION "v1.0.25-ow"
+  #define FIRMWARE_VERSION "v1.0.34-ow"
 #endif
 
 // Customer settings - use defaults if not using customer config
