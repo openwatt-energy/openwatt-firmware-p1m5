@@ -10,7 +10,7 @@ void SerialConsole::begin() {
 
   Serial.println();
   Serial.println("=================================");
-  Serial.println("OpenWatt P1 Reader  " FIRMWARE_VERSION);
+  Serial.println(CUSTOMER_DISPLAY_NAME " P1 Reader  " FIRMWARE_VERSION);
   Serial.println("Serial: 115200 8N1 (use this baud in terminal)");
   Serial.println("=================================");
   Serial.flush();

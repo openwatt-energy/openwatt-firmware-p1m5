@@ -6,22 +6,64 @@
 #define ENABLE_MQTT 1       // MQTT client enabled for mqtt.example.com
 #define ENABLE_OTA 1        // OTA updates enabled
 
-// Firmware version (bump on release: minor = features, patch = fixes)
-#define FIRMWARE_VERSION "v1.0.24-ow"
-#define DEVICE_NAME_PREFIX "OpenWatt-P1"
-#define SALT_STRING "CHANGE_ME_SALT"
+// Include customer config first (if defined) for version suffix and settings
+#ifdef CUSTOMER_CONFIG_H
+  #include "customer_config.h"
+#endif
 
-// MQTT Configuration for mqtt.example.com
-#define MQTT_BROKER_HOST "mqtt.example.com"
-#define MQTT_BROKER_PORT 8883  // TLS port
-#define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
-#define MQTT_DEFAULT_TOPIC "P1M5/"
-// Production secret key for password generation (matches setup_auth.py)
+// Firmware version (bump on release: minor = features, patch = fixes)
+// If FIRMWARE_VERSION_SUFFIX is defined (from customer_config.h), append it
+#ifdef FIRMWARE_VERSION_SUFFIX
+  #define FIRMWARE_VERSION "v1.0.25" FIRMWARE_VERSION_SUFFIX
+#else
+  #define FIRMWARE_VERSION "v1.0.25-ow"
+#endif
+
+// Customer settings - use defaults if not using customer config
+#ifndef CUSTOMER_NAME
+  // Default OpenWatt values
+  #define CUSTOMER_NAME "openwatt"
+  #define CUSTOMER_DISPLAY_NAME "OpenWatt"
+  #define CUSTOMER_FINGERPRINT_DEFAULT ""
+  #define AP_SSID_PREFIX "OpenWatt-P1"
+  #define SALT_STRING "CHANGE_ME_SALT"
+
+  // MQTT Configuration for mqtt.example.com
+  #define MQTT_BROKER_HOST "mqtt.example.com"
+  #define MQTT_BROKER_PORT 8883  // TLS port
+  #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
+  #define MQTT_DEFAULT_TOPIC "P1M5/"
+  #define MQTT_PUBLISH_INTERVAL_MS 5000
+
+  // Feature defaults
+  #define JSON_API_ENABLED 1
+  #define MQTT_SETTINGS_UI_ENABLED 0
+
+  // Theme defaults (OpenWatt blue)
+  #define THEME_PRIMARY "#2563eb"
+  #define THEME_BACKGROUND "#ffffff"
+  #define THEME_TEXT "#111827"
+  #define THEME_ACCENT "#1d4ed8"
+#endif
+
+// MQTT Configuration - Broker port (plain text fallback)
+#define MQTT_BROKER_PORT_PLAIN 1883
 
 // MQTT Publish interval (milliseconds) - default 5 seconds
-#define MQTT_PUBLISH_INTERVAL_MS 5000
+#ifndef MQTT_PUBLISH_INTERVAL_MS
+  #define MQTT_PUBLISH_INTERVAL_MS 5000
+#endif
 
 // MQTT Status publish interval (milliseconds) - default 60 seconds for firmware info
 #define MQTT_STATUS_INTERVAL_MS 60000
+
+// NVS Keys for runtime overrides
+#define NVS_KEY_FINGERPRINT "customer_fingerprint"
+#define NVS_KEY_MQTT_HOST "mqtt_host"
+#define NVS_KEY_MQTT_INTERVAL "mqtt_interval"
+#define NVS_KEY_REBOOT_COUNT "reboot_count"
+
+// NVS namespace
+#define NVS_NAMESPACE "openwatt"
 
 #endif

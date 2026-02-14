@@ -1,15 +1,27 @@
 #include "web_ui.h"
+#include "config.h"
 
 // Include WiFi header for status checking
 #include <WiFi.h>
 
+// Generate CSS variables for theming from compile-time config
+String getThemeVariables() {
+  String css = ":root{";
+  css += "--primary:" THEME_PRIMARY ";";
+  css += "--bg:" THEME_BACKGROUND ";";
+  css += "--text:" THEME_TEXT ";";
+  css += "--accent:" THEME_ACCENT ";";
+  css += "}";
+  return css;
+}
+
 // Embedded minimal CSS for offline/AP mode (when no internet connectivity)
 // This is a compact, self-contained stylesheet that works without external dependencies
 String getOfflineCSS() {
-  return "<style>"
+  return "<style>" + getThemeVariables() +
     /* CSS Reset and Base */
     "*{box-sizing:border-box;margin:0;padding:0}"
-    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f9fafb;color:#111827;line-height:1.5;min-height:100vh}"
+    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}"
     
     /* Layout - Minimal but functional */
     ".max-w-7xl{max-width:80rem;margin:0 auto;padding:0 1rem}"
@@ -88,7 +100,7 @@ String getOfflineCSS() {
     /* Buttons */
     "button{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .15s}"
     "button:hover{opacity:.9}"
-    ".btn-primary{background:#2563eb;color:#fff}"
+    ".btn-primary{background:var(--primary);color:#fff}"
     ".btn-danger{background:#dc2626;color:#fff}"
     
     /* Custom utilities */
@@ -144,7 +156,7 @@ String getEmbeddedCSS() {
 String getWebPage(const String& path) {
   // OpenWatt Logo - Embedded SVG (works offline)
   String logo = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 48\" class=\"h-10 w-10\">";
-  logo += "<defs><linearGradient id=\"owGrad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" style=\"stop-color:#3b82f6;stop-opacity:1\" /><stop offset=\"100%\" style=\"stop-color:#1d4ed8;stop-opacity:1\" /></linearGradient></defs>";
+  logo += "<defs><linearGradient id=\"owGrad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" style=\"stop-color:var(--primary);stop-opacity:1\" /><stop offset=\"100%\" style=\"stop-color:var(--accent);stop-opacity:1\" /></linearGradient></defs>";
   logo += "<circle cx=\"24\" cy=\"24\" r=\"22\" fill=\"url(#owGrad)\" />";
   logo += "<path fill=\"white\" d=\"M28 12l-12 16h8l-4 16 16-20h-8l4-12z\" />";
   logo += "</svg>";
@@ -158,7 +170,7 @@ String getWebPage(const String& path) {
   if (path == "/" || path == "/index.html") {
     String html = "<!DOCTYPE html><html lang=en><head>";
     html += "<meta charset=UTF-8><meta name=viewport content=\"width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no\">";
-    html += "<title>OpenWatt P1 Reader - Dashboard</title>";
+    html += "<title>" CUSTOMER_DISPLAY_NAME " P1 Reader - Dashboard</title>";
     html += themeCSS;
     html += "</head><body>";
     html += "<nav class=\"bg-white border-b border-gray-200 sticky top-0 z-50\">";
@@ -423,7 +435,7 @@ String getWebPage(const String& path) {
     html += "<button onclick=reboot() class=\"inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium\">Reboot Device</button>";
     html += "<button onclick=factoryReset() class=\"inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium\">Factory Reset</button>";
     html += "</div></div></main>";
-    html += "<script>fetch('/api/system').then(r=>r.json()).then(data=>{document.getElementById('systemVersion').textContent='FW '+data.firmware_version;document.getElementById('systemInfo').innerHTML='<div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Firmware</span><span class=font-medium>'+data.firmware_version+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Device ID</span><span class=font-medium>'+data.device_id+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Serial</span><span class=font-medium>'+data.serial_number+'</span></div><div class=\"flex justify-between py-2\"><span class=text-gray-600>API URL</span><a href='+window.location.origin+'/api/system class=text-blue-600 hover:underline font-medium>'+window.location.origin+'</a></div>';});";
+    html += "<script>fetch('/api/system').then(r=>r.json()).then(data=>{document.getElementById('systemVersion').textContent='FW '+data.firmware_version;document.getElementById('systemInfo').innerHTML='<div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Firmware</span><span class=font-medium>'+data.firmware_version+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Customer</span><span class=font-medium>'+data.display_name+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Fingerprint</span><span class=font-medium>'+data.fingerprint+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Device ID</span><span class=font-medium>'+data.device_id+'</span></div><div class=\"flex justify-between py-2 border-b border-gray-100\"><span class=text-gray-600>Serial</span><span class=font-medium>'+data.serial_number+'</span></div><div class=\"flex justify-between py-2\"><span class=text-gray-600>API URL</span><a href='+window.location.origin+'/api/system class=text-blue-600 hover:underline font-medium>'+window.location.origin+'</a></div>';});";
     html += "function reboot(){if(confirm('Reboot device?'))fetch('/api/system/reboot',{method:'PATCH'});}";
     html += "function factoryReset(){if(confirm('WARNING: This will erase all settings!'))fetch('/api/system/factory_reset',{method:'PATCH'});}</script>";
     html += "</body></html>";

@@ -32,6 +32,22 @@ static String getNvsString(const char* key) {
   return s;
 }
 
+String getFingerprint() {
+  // First check NVS for override
+  String fp = getNvsString(NVS_KEY_FINGERPRINT);
+  if (fp.length() > 0) return fp;
+  // Fall back to compile-time default
+  return String(CUSTOMER_FINGERPRINT_DEFAULT);
+}
+
+static String getThemeColor(const char* key) {
+  if (strcmp(key, "primary") == 0) return THEME_PRIMARY;
+  if (strcmp(key, "background") == 0) return THEME_BACKGROUND;
+  if (strcmp(key, "text") == 0) return THEME_TEXT;
+  if (strcmp(key, "accent") == 0) return THEME_ACCENT;
+  return "";
+}
+
 Preferences* WebAPI::prefs = nullptr;
 String WebAPI::deviceId;
 String WebAPI::serialNumber;
@@ -104,6 +120,18 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["firmware_version"] = FIRMWARE_VERSION;
     doc["serial_number"] = WebAPI::serialNumber;
     doc["device_id"] = WebAPI::deviceId;
+    
+    // Customer info
+    doc["customer"] = CUSTOMER_NAME;
+    doc["display_name"] = CUSTOMER_DISPLAY_NAME;
+    doc["fingerprint"] = getFingerprint();
+    
+    // Theme colors
+    JsonObject theme = doc["theme"].to<JsonObject>();
+    theme["primary"] = THEME_PRIMARY;
+    theme["background"] = THEME_BACKGROUND;
+    theme["text"] = THEME_TEXT;
+    theme["accent"] = THEME_ACCENT;
     
     String response;
     serializeJson(doc, response);

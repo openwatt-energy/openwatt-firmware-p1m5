@@ -6,6 +6,9 @@
 #include <ArduinoJson.h>
 #include "p1_reader.h"
 
+// Get fingerprint from NVS or compile-time default
+String getFingerprint();
+
 class WebAPI {
 public:
   static void setup(AsyncWebServer& server, Preferences& prefs, const String& deviceId, const String& serialNumber);

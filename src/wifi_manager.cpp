@@ -1,10 +1,10 @@
 #include "wifi_manager.h"
 #include "serial_console.h"
+#include "config.h"
 #include <Preferences.h>
 #include <cstring>
 #include <nvs.h>
 
-#define AP_SSID_PREFIX "OpenWatt-P1"
 // WiFi credentials stored using Preferences API (more reliable than direct NVS)
 #define PREFS_NAMESPACE "openwatt"
 #define PREFS_KEY_WIFI_SSID "wifi_ssid"

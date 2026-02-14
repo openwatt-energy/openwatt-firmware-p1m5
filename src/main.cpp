@@ -36,6 +36,9 @@
 #include "ota_update.h"
 #endif
 
+// Forward declarations
+String getFingerprint();
+
 // ============================================================================
 // GLOBAL OBJECTS
 // ============================================================================
@@ -74,7 +77,7 @@ String getDeviceName() {
   esp_efuse_mac_get_default(mac);
   
   char deviceName[32];
-  sprintf(deviceName, "OpenWatt-P1%02X%02X%02X", mac[3], mac[4], mac[5]);
+  sprintf(deviceName, "%s%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
   
   return String(deviceName);
 }
@@ -333,6 +336,21 @@ void publishMQTTStatus() {
     return;
   }
   
+  // Get or initialize reboot count from NVS
+  static int rebootCount = 0;
+  static bool rebootCountLoaded = false;
+  if (!rebootCountLoaded) {
+    rebootCountLoaded = true;
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) == ESP_OK) {
+      rebootCount = nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, 0);
+      rebootCount++;
+      nvs_set_i32(h, NVS_KEY_REBOOT_COUNT, rebootCount);
+      nvs_commit(h);
+      nvs_close(h);
+    }
+  }
+  
   JsonDocument doc;
   
   // Generate UUID for message ID
@@ -346,11 +364,14 @@ void publishMQTTStatus() {
   doc["hostname"] = state.deviceId;
   
   // System stats
-  static int rebootCount = 0;  // Could be stored in NVS
   doc["reboots"] = rebootCount;
   doc["uptime"] = millis() / 1000;  // seconds
   doc["dongle_ip"] = WiFiManager::getIP();
   doc["fw_ver"] = FIRMWARE_VERSION;
+  
+  // Customer info
+  doc["customer"] = CUSTOMER_NAME;
+  doc["fingerprint"] = getFingerprint();
   
   // Throttle setting (configurable)
   doc["rtl_throttle"] = 5;  // Default throttle value
