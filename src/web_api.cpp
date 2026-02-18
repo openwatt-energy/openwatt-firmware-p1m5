@@ -231,10 +231,10 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     if (d.productionT5 > 0) doc["total_power_export_t5_kwh"] = d.productionT5;
 
     // Active power (convert kW to W)
-    doc["active_power_w"] = d.powerConsumed * 1000;
-    doc["active_power_l1_w"] = d.powerImportL1 * 1000;
-    doc["active_power_l2_w"] = d.powerImportL2 * 1000;
-    doc["active_power_l3_w"] = d.powerImportL3 * 1000;
+    doc["active_power_w"] = (d.powerConsumed - d.powerProduced) * 1000;
+    doc["active_power_l1_w"] = (d.powerImportL1 - d.powerExportL1) * 1000;
+    doc["active_power_l2_w"] = (d.powerImportL2 - d.powerExportL2) * 1000;
+    doc["active_power_l3_w"] = (d.powerImportL3 - d.powerExportL3) * 1000;
 
     // Voltage and current
     doc["active_voltage_l1_v"] = d.voltageL1;
@@ -356,7 +356,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     JsonArray networks = doc["networks"].to<JsonArray>();
 
     SerialConsole::println("WiFi scan: Starting...");
-    
+
     // Just scan - ESP32 can scan in any mode
     int n = WiFi.scanNetworks();
     SerialConsole::println("WiFi scan: Found " + String(n) + " networks");
