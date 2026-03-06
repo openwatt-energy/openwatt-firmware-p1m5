@@ -26,7 +26,7 @@
   #define CUSTOMER_NAME "openwatt"
   #define CUSTOMER_DISPLAY_NAME "OpenWatt"
   #define CUSTOMER_FINGERPRINT_DEFAULT ""
-  #define AP_SSID_PREFIX "OpenWatt-P1"
+  #define AP_SSID_PREFIX "OpenWatt"
   #define SALT_STRING "CHANGE_ME_SALT"
 
   // MQTT Configuration for mqtt.example.com
