@@ -104,24 +104,9 @@ bool OTAClient::downloadAndApply(const String& deviceSerial, const String& curre
   }
 
   // Get firmware info from headers
-  // Try custom headers first, then fall back to standard headers
   String firmwareName = http.header("Xenn-Firmware-Name");
   String firmwareTag = http.header("Xenn-Firmware-Tag");
   String firmwareDate = http.header("Xenn-Firmware-Date");
-
-  // Fallback to standard HTTP headers if custom headers are empty
-  if (firmwareTag.length() == 0) {
-    firmwareTag = http.header("ETag");
-  }
-  if (firmwareName.length() == 0) {
-    firmwareName = http.header("Content-Disposition");
-    // Extract filename from Content-Disposition if present
-    int filenamePos = firmwareName.indexOf("filename=");
-    if (filenamePos >= 0) {
-      firmwareName = firmwareName.substring(filenamePos + 9);
-      firmwareName.replace("\"", "");
-    }
-  }
 
   LOG_INFO(MODULE_OTA, "Firmware info:");
   LOG_INFO(MODULE_OTA, "  Name: %s", firmwareName.c_str());
