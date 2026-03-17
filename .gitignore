@@ -1,2 +1,3 @@
 .pio
 customer_config.h
+src/generated/
