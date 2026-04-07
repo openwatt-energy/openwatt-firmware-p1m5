@@ -181,7 +181,7 @@
         <div class="form-group">
           <label>Scan Networks</label>
           <button type="button" class="btn" onclick="scanWiFi()">Scan</button>
-          <div id="wifiList" class="wifi-list" style="display:none; margin-top: 1rem;"></div>
+          <div id="wifiList" style="display:none; margin-top: 1rem;"></div>
         </div>
         <div class="form-group">
           <label>SSID</label>
@@ -238,28 +238,28 @@
     }
 
     function scanWiFi() {
+      const listEl = document.getElementById('wifiList');
+      listEl.innerHTML = 'Scanning...';
+      listEl.style.display = 'block';
+
       fetch('/api/config/wifiscan')
         .then(r => r.json())
         .then(data => {
-          const listEl = document.getElementById('wifiList');
           if (data.networks && data.networks.length > 0) {
-            listEl.innerHTML = data.networks.map(net =>
-              `<div class="wifi-item" onclick="selectWiFi('${net.ssid}')">${net.ssid} (${net.rssi} dBm)</div>`
-            ).join('');
-            listEl.style.display = 'block';
+            let selectHTML = '<select class="form-group" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" onchange="document.getElementById(\'wifiSSID\').value=this.value;">';
+            selectHTML += '<option value="" disabled selected>Select a scanned network...</option>';
+            data.networks.forEach(net => {
+              selectHTML += `<option value="${net.ssid}">${net.ssid} (${net.rssi} dBm)</option>`;
+            });
+            selectHTML += '</select>';
+            listEl.innerHTML = selectHTML;
           } else {
             listEl.innerHTML = '<div>No networks found</div>';
-            listEl.style.display = 'block';
           }
         })
         .catch(e => {
           showMessage('Error scanning WiFi: ' + e.message, true);
         });
-    }
-
-    function selectWiFi(ssid) {
-      document.getElementById('wifiSSID').value = ssid;
-      document.getElementById('wifiList').style.display = 'none';
     }
 
     document.getElementById('wifiForm').addEventListener('submit', (e) => {
