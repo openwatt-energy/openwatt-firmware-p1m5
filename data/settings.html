@@ -242,6 +242,11 @@
       listEl.innerHTML = 'Scanning...';
       listEl.style.display = 'block';
 
+      function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      }
+
       fetch('/api/config/wifiscan')
         .then(r => r.json())
         .then(data => {
@@ -249,7 +254,8 @@
             let selectHTML = '<select class="form-group" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" onchange="document.getElementById(\'wifiSSID\').value=this.value;">';
             selectHTML += '<option value="" disabled selected>Select a scanned network...</option>';
             data.networks.forEach(net => {
-              selectHTML += `<option value="${net.ssid}">${net.ssid} (${net.rssi} dBm)</option>`;
+              const escapedSSID = escapeHtml(net.ssid);
+              selectHTML += `<option value="${escapedSSID}">${escapedSSID} (${net.rssi} dBm)</option>`;
             });
             selectHTML += '</select>';
             listEl.innerHTML = selectHTML;
