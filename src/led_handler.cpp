@@ -15,21 +15,20 @@ void LEDHandler::begin() {
   // Initialize FastLED
   FastLED.addLeds<SK6812, LED_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(128);  // 50% brightness
-  
+
   // Start with booting state (red)
   setBooting();
 }
 
 void LEDHandler::loop() {
   unsigned long now = millis();
-  
+
   // Update LED based on current status
   if (now - lastUpdate >= 100) {  // Update every 100ms
     updateLED();
     lastUpdate = now;
+    FastLED.show();
   }
-  
-  FastLED.show();
 }
 
 void LEDHandler::setBooting() {
@@ -51,7 +50,7 @@ void LEDHandler::setOTAUpdate(bool inProgress) {
 
 void LEDHandler::setAPMode(bool active, bool meterConnected, bool wifiAvailable) {
   if (!active) return;
-  
+
   if (!meterConnected) {
     currentStatus = LEDStatus::AP_MODE_NO_METER;
   } else if (!wifiAvailable) {
@@ -66,7 +65,7 @@ void LEDHandler::setWiFiStatus(bool connected, bool meterConnected, bool cloudCo
     // Should be in AP mode, handled separately
     return;
   }
-  
+
   if (!meterConnected && !cloudConnected) {
     currentStatus = LEDStatus::WIFI_NO_METER_CLOUD;
   } else if (!meterConnected) {
@@ -90,49 +89,49 @@ void LEDHandler::setStatus(LEDStatus status) {
 void LEDHandler::updateLED() {
   static unsigned long patternStart = 0;
   unsigned long now = millis();
-  
+
   switch (currentStatus) {
     case LEDStatus::BOOTING:
       // Red continuous
       applyPattern(COLOR_RED, BlinkPattern::SOLID);
       break;
-      
+
     case LEDStatus::ERROR_UNKNOWN:
       // Red fast blink
       applyPattern(COLOR_RED, BlinkPattern::FAST);
       break;
-      
+
     case LEDStatus::OTA_IN_PROGRESS:
       // Orange continuous
       applyPattern(COLOR_ORANGE, BlinkPattern::SOLID);
       break;
-      
+
     case LEDStatus::AP_MODE_NO_METER:
     case LEDStatus::AP_MODE_NO_WIFI:
       // Blue slow blink
       applyPattern(COLOR_BLUE, BlinkPattern::SLOW);
       break;
-      
+
     case LEDStatus::AP_MODE_READY:
       // Blue continuous
       applyPattern(COLOR_BLUE, BlinkPattern::SOLID);
       break;
-      
+
     case LEDStatus::WIFI_NO_METER:
       // Green slow blink
       applyPattern(COLOR_GREEN, BlinkPattern::SLOW);
       break;
-      
+
     case LEDStatus::WIFI_NO_CLOUD:
       // Green double blink
       applyPattern(COLOR_GREEN, BlinkPattern::DOUBLE);
       break;
-      
+
     case LEDStatus::WIFI_METER_CLOUD:
       // Green continuous
       applyPattern(COLOR_GREEN, BlinkPattern::SOLID);
       break;
-      
+
     case LEDStatus::WIFI_NO_METER_CLOUD:
       // Green triple blink
       applyPattern(COLOR_GREEN, BlinkPattern::TRIPLE);
@@ -144,12 +143,12 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
   static unsigned long patternStart = 0;
   static int phase = 0;
   unsigned long now = millis();
-  
+
   switch (pattern) {
     case BlinkPattern::SOLID:
       leds[0] = color;
       break;
-      
+
     case BlinkPattern::SLOW:
       // ~1Hz (500ms on, 500ms off)
       if ((now / 500) % 2 == 0) {
@@ -158,7 +157,7 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
         leds[0] = COLOR_OFF;
       }
       break;
-      
+
     case BlinkPattern::FAST:
       // ~5Hz (100ms on, 100ms off)
       if ((now / 100) % 2 == 0) {
@@ -167,7 +166,7 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
         leds[0] = COLOR_OFF;
       }
       break;
-      
+
     case BlinkPattern::DOUBLE:
       // Two quick blinks, then pause
       {
@@ -179,7 +178,7 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
         }
       }
       break;
-      
+
     case BlinkPattern::TRIPLE:
       // Three quick blinks, then pause
       {

@@ -19,6 +19,7 @@
 #include <Preferences.h>
 #include <MD5Builder.h>
 #include <nvs.h>
+#include <freertos/semphr.h>
 
 // Include config first to define feature flags
 #include "config.h"
@@ -46,6 +47,7 @@ String getFingerprint();
 Preferences preferences;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/api/live");
+SemaphoreHandle_t dataMutex;
 
 // ============================================================================
 // STATE VARIABLES
@@ -406,53 +408,55 @@ void publishToMQTT(const P1Data& data) {
 
 // Called from P1 reader task when a valid telegram received.
 void onP1DataReceived(const P1Data& data) {
-  // Merge data - only update fields that have values in the new telegram
-  // This handles meters that send different telegram types (energy vs voltage/current)
-  if (data.equipmentId.length() > 0) latestData.equipmentId = data.equipmentId;
-  if (data.timestamp.length() > 0) latestData.timestamp = data.timestamp;
-  if (data.tariffIndicator > 0) latestData.tariffIndicator = data.tariffIndicator;
-  if (data.consumptionT1 > 0) latestData.consumptionT1 = data.consumptionT1;
-  if (data.consumptionT2 > 0) latestData.consumptionT2 = data.consumptionT2;
-  if (data.productionT1 > 0) latestData.productionT1 = data.productionT1;
-  if (data.productionT2 > 0) latestData.productionT2 = data.productionT2;
-  if (data.powerConsumed > 0) latestData.powerConsumed = data.powerConsumed;
-  if (data.powerProduced > 0) latestData.powerProduced = data.powerProduced;
-  if (data.powerImportL1 >= 0) latestData.powerImportL1 = data.powerImportL1;
-  if (data.powerImportL2 >= 0) latestData.powerImportL2 = data.powerImportL2;
-  if (data.powerImportL3 >= 0) latestData.powerImportL3 = data.powerImportL3;
-  if (data.powerExportL1 >= 0) latestData.powerExportL1 = data.powerExportL1;
-  if (data.powerExportL2 >= 0) latestData.powerExportL2 = data.powerExportL2;
-  if (data.powerExportL3 >= 0) latestData.powerExportL3 = data.powerExportL3;
-  if (data.avgDemand > 0) latestData.avgDemand = data.avgDemand;
-  if (data.maxDemandMonth > 0) latestData.maxDemandMonth = data.maxDemandMonth;
-  if (data.maxDemand13M > 0) latestData.maxDemand13M = data.maxDemand13M;
-  if (data.maxDemandTimestamp.length() > 0) latestData.maxDemandTimestamp = data.maxDemandTimestamp;
+  if (xSemaphoreTake(dataMutex, portMAX_DELAY)) {
+    // Merge data - only update fields that have values in the new telegram
+    // This handles meters that send different telegram types (energy vs voltage/current)
+    if (data.equipmentId.length() > 0) latestData.equipmentId = data.equipmentId;
+    if (data.timestamp.length() > 0) latestData.timestamp = data.timestamp;
+    if (data.tariffIndicator > 0) latestData.tariffIndicator = data.tariffIndicator;
+    if (data.consumptionT1 > 0) latestData.consumptionT1 = data.consumptionT1;
+    if (data.consumptionT2 > 0) latestData.consumptionT2 = data.consumptionT2;
+    if (data.productionT1 > 0) latestData.productionT1 = data.productionT1;
+    if (data.productionT2 > 0) latestData.productionT2 = data.productionT2;
+    if (data.powerConsumed > 0) latestData.powerConsumed = data.powerConsumed;
+    if (data.powerProduced > 0) latestData.powerProduced = data.powerProduced;
+    if (data.powerImportL1 >= 0) latestData.powerImportL1 = data.powerImportL1;
+    if (data.powerImportL2 >= 0) latestData.powerImportL2 = data.powerImportL2;
+    if (data.powerImportL3 >= 0) latestData.powerImportL3 = data.powerImportL3;
+    if (data.powerExportL1 >= 0) latestData.powerExportL1 = data.powerExportL1;
+    if (data.powerExportL2 >= 0) latestData.powerExportL2 = data.powerExportL2;
+    if (data.powerExportL3 >= 0) latestData.powerExportL3 = data.powerExportL3;
+    if (data.avgDemand > 0) latestData.avgDemand = data.avgDemand;
+    if (data.maxDemandMonth > 0) latestData.maxDemandMonth = data.maxDemandMonth;
+    if (data.maxDemand13M > 0) latestData.maxDemand13M = data.maxDemand13M;
+    if (data.maxDemandTimestamp.length() > 0) latestData.maxDemandTimestamp = data.maxDemandTimestamp;
 
-  // Identification
-  if (data.meterModel.length() > 0) latestData.meterModel = data.meterModel;
-  if (data.meterVersion.length() > 0) latestData.meterVersion = data.meterVersion;
-  if (data.secondId.length() > 0) latestData.secondId = data.secondId;
-  if (data.textMessage.length() > 0) latestData.textMessage = data.textMessage;
+    // Identification
+    if (data.meterModel.length() > 0) latestData.meterModel = data.meterModel;
+    if (data.meterVersion.length() > 0) latestData.meterVersion = data.meterVersion;
+    if (data.secondId.length() > 0) latestData.secondId = data.secondId;
+    if (data.textMessage.length() > 0) latestData.textMessage = data.textMessage;
 
-  // Voltage (accept 0 values as they are valid readings)
-  if (data.voltageL1 >= 0) latestData.voltageL1 = data.voltageL1;
-  if (data.voltageL2 >= 0) latestData.voltageL2 = data.voltageL2;
-  if (data.voltageL3 >= 0) latestData.voltageL3 = data.voltageL3;
+    // Voltage (accept 0 values as they are valid readings)
+    if (data.voltageL1 >= 0) latestData.voltageL1 = data.voltageL1;
+    if (data.voltageL2 >= 0) latestData.voltageL2 = data.voltageL2;
+    if (data.voltageL3 >= 0) latestData.voltageL3 = data.voltageL3;
 
-  // Current (accept 0 values as they are valid readings)
-  if (data.currentL1 >= 0) latestData.currentL1 = data.currentL1;
-  if (data.currentL2 >= 0) latestData.currentL2 = data.currentL2;
-  if (data.currentL3 >= 0) latestData.currentL3 = data.currentL3;
-  if (data.currentTotal >= 0) latestData.currentTotal = data.currentTotal;
+    // Current (accept 0 values as they are valid readings)
+    if (data.currentL1 >= 0) latestData.currentL1 = data.currentL1;
+    if (data.currentL2 >= 0) latestData.currentL2 = data.currentL2;
+    if (data.currentL3 >= 0) latestData.currentL3 = data.currentL3;
+    if (data.currentTotal >= 0) latestData.currentTotal = data.currentTotal;
 
-  // Switch position
-  if (data.switchPosition >= 0) latestData.switchPosition = data.switchPosition;
+    // Switch position
+    if (data.switchPosition >= 0) latestData.switchPosition = data.switchPosition;
 
-  latestData.valid = true;
+    latestData.valid = true;
+    latestData.newTelegram = true;
 
-  WebAPI::setLatestData(latestData);
-  publishToMQTT(latestData);
-  broadcastToWebSocket(latestData);
+    WebAPI::setLatestData(latestData);
+    xSemaphoreGive(dataMutex);
+  }
 }
 
 // ============================================================================
@@ -545,6 +549,8 @@ void setup() {
 
   // Initialize Serial Console
   SerialConsole::begin();
+
+  dataMutex = xSemaphoreCreateMutex();
 
   SerialConsole::print("Firmware: ");
   SerialConsole::println(FIRMWARE_VERSION);
@@ -701,6 +707,18 @@ void loop() {
   yield();
   LEDHandler::loop();
   yield();
+
+  if (xSemaphoreTake(dataMutex, 0)) {
+    if (latestData.newTelegram) {
+      latestData.newTelegram = false;
+      P1Data dataToPublish = latestData; // Local copy
+      xSemaphoreGive(dataMutex);
+      publishToMQTT(dataToPublish);
+      broadcastToWebSocket(dataToPublish);
+    } else {
+      xSemaphoreGive(dataMutex);
+    }
+  }
 
   // Maintain MQTT connection (if enabled)
   #if ENABLE_MQTT
