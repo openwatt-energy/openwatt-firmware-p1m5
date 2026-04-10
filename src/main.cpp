@@ -334,7 +334,9 @@ void publishToMQTT(const P1Data& data) {
 
 // Publish device status (config log format - Xenn compatible)
 void publishMQTTStatus() {
+  SerialConsole::println("MQTT: Starting publishMQTTStatus...");
   if (!MQTTClient::isConnected()) {
+    SerialConsole::println("MQTT: Status publish skipped - MQTT not connected");
     return;
   }
 
@@ -396,6 +398,7 @@ void publishMQTTStatus() {
 
   // Publish to config topic (Xenn compatible)
   String topic = state.deviceId + "/sys/config";
+  SerialConsole::println("MQTT: Publishing to " + topic);
   MQTTClient::publish(topic, jsonString);
 
   SerialConsole::println("MQTT: Published config: fw=" + String(FIRMWARE_VERSION));
