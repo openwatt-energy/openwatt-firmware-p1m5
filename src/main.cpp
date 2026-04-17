@@ -735,6 +735,7 @@ void loop() {
   // Publish status periodically (firmware version, uptime, etc.)
   static unsigned long lastStatusPublish = 0;
   if (millis() - lastStatusPublish > MQTT_STATUS_INTERVAL_MS) {
+    SerialConsole::println("MQTT: Interval elapsed, publishing status...");
     lastStatusPublish = millis();
     publishMQTTStatus();
   }
