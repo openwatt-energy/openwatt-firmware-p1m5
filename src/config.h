@@ -12,7 +12,7 @@
 #endif
 
 // Firmware version (bump on release: minor = features, patch = fixes)
-#define FIRMWARE_VERSION_BASE "v1.0.55"
+#define FIRMWARE_VERSION_BASE "v1.0.56"
 
 #ifdef FIRMWARE_VERSION_SUFFIX
   #define FIRMWARE_VERSION FIRMWARE_VERSION_BASE FIRMWARE_VERSION_SUFFIX

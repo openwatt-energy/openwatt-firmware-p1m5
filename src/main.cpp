@@ -734,10 +734,18 @@ void loop() {
 
   // Publish status periodically (firmware version, uptime, etc.)
   static unsigned long lastStatusPublish = 0;
-  if (millis() - lastStatusPublish > MQTT_STATUS_INTERVAL_MS) {
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastStatusPublish > MQTT_STATUS_INTERVAL_MS) {
     SerialConsole::println("MQTT: Interval elapsed, publishing status...");
-    lastStatusPublish = millis();
+    lastStatusPublish = currentMillis;
     publishMQTTStatus();
+  } else {
+    // Debug: print every 10 seconds to see if it's counting up
+    static unsigned long lastDebug = 0;
+    if (currentMillis - lastDebug > 10000) {
+      SerialConsole::println("MQTT: Waiting to publish status... " + String((currentMillis - lastStatusPublish)/1000) + "/" + String(MQTT_STATUS_INTERVAL_MS/1000) + "s");
+      lastDebug = currentMillis;
+    }
   }
   yield();
   #endif
