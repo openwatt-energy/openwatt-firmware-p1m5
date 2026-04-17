@@ -25,9 +25,14 @@ void LEDHandler::loop() {
 
   // Update LED based on current status
   if (now - lastUpdate >= 100) {  // Update every 100ms
+    CRGB lastColor = leds[0];
     updateLED();
     lastUpdate = now;
-    FastLED.show();
+
+    // Only call FastLED.show() if the color actually changed
+    if (lastColor != leds[0]) {
+      FastLED.show();
+    }
   }
 }
 

@@ -467,58 +467,61 @@ void onP1DataReceived(const P1Data& data) {
 // ============================================================================
 
 void broadcastToWebSocket(const P1Data& data) {
-  JsonDocument doc;
+  if (xSemaphoreTake(dataMutex, portMAX_DELAY)) {
+    JsonDocument doc;
 
-  // Add server timestamp so UI can see update frequency even if meter data unchanged
-  doc["last_update"] = String(millis());
+    // Add server timestamp so UI can see update frequency even if meter data unchanged
+    doc["last_update"] = String(millis());
 
-  // Identification
-  doc["0-0:96.1.1"] = data.equipmentId;
-  doc["0-0:96.1.4"] = data.meterModel;
-  doc["1-0:94.32.1"] = data.meterVersion;
-  doc["0-0:96.1.2"] = data.secondId;
-  doc["0-0:96.13.0"] = data.textMessage;
+    // Identification
+    doc["0-0:96.1.1"] = data.equipmentId;
+    doc["0-0:96.1.4"] = data.meterModel;
+    doc["1-0:94.32.1"] = data.meterVersion;
+    doc["0-0:96.1.2"] = data.secondId;
+    doc["0-0:96.13.0"] = data.textMessage;
 
-  // Timestamp and tariff
-  doc["0-0:1.0.0"] = data.timestamp;
-  doc["0-0:96.14.0"] = data.tariffIndicator;
+    // Timestamp and tariff
+    doc["0-0:1.0.0"] = data.timestamp;
+    doc["0-0:96.14.0"] = data.tariffIndicator;
 
-  // Energy consumption/production (kWh)
-  doc["1-0:1.8.1"] = data.consumptionT1;
-  doc["1-0:2.8.1"] = data.productionT1;
-  doc["1-0:1.8.2"] = data.consumptionT2;
-  doc["1-0:2.8.2"] = data.productionT2;
+    // Energy consumption/production (kWh)
+    doc["1-0:1.8.1"] = data.consumptionT1;
+    doc["1-0:2.8.1"] = data.productionT1;
+    doc["1-0:1.8.2"] = data.consumptionT2;
+    doc["1-0:2.8.2"] = data.productionT2;
 
-  // Instantaneous power (kW) - total and per-phase
-  doc["1-0:1.7.0"] = data.powerConsumed;
-  doc["1-0:2.7.0"] = data.powerProduced;
-  doc["1-0:1.4.0"] = data.avgDemand;
-  doc["1-0:21.7.0"] = data.powerImportL1;  // L1 import
-  doc["1-0:41.7.0"] = data.powerImportL2;  // L2 import
-  doc["1-0:61.7.0"] = data.powerImportL3;  // L3 import
+    // Instantaneous power (kW) - total and per-phase
+    doc["1-0:1.7.0"] = data.powerConsumed;
+    doc["1-0:2.7.0"] = data.powerProduced;
+    doc["1-0:1.4.0"] = data.avgDemand;
+    doc["1-0:21.7.0"] = data.powerImportL1;  // L1 import
+    doc["1-0:41.7.0"] = data.powerImportL2;  // L2 import
+    doc["1-0:61.7.0"] = data.powerImportL3;  // L3 import
 
-  // Demand history
-  doc["1-0:1.6.0"] = data.maxDemandMonth;
-  doc["1-0:1.6.0_timestamp"] = data.maxDemandTimestamp;
-  doc["0-0:98.1.0"] = data.maxDemand13M;
+    // Demand history
+    doc["1-0:1.6.0"] = data.maxDemandMonth;
+    doc["1-0:1.6.0_timestamp"] = data.maxDemandTimestamp;
+    doc["0-0:98.1.0"] = data.maxDemand13M;
 
-  // Voltage (V) - 3 phases
-  doc["1-0:32.7.0"] = data.voltageL1;
-  doc["1-0:52.7.0"] = data.voltageL2;
-  doc["1-0:72.7.0"] = data.voltageL3;
+    // Voltage (V) - 3 phases
+    doc["1-0:32.7.0"] = data.voltageL1;
+    doc["1-0:52.7.0"] = data.voltageL2;
+    doc["1-0:72.7.0"] = data.voltageL3;
 
-  // Current (A) - 3 phases
-  doc["1-0:31.7.0"] = data.currentL1;
-  doc["1-0:51.7.0"] = data.currentL2;
-  doc["1-0:71.7.0"] = data.currentL3;
+    // Current (A) - 3 phases
+    doc["1-0:31.7.0"] = data.currentL1;
+    doc["1-0:51.7.0"] = data.currentL2;
+    doc["1-0:71.7.0"] = data.currentL3;
 
-  // Switch position
-  doc["0-0:96.3.10"] = data.switchPosition;
+    // Switch position
+    doc["0-0:96.3.10"] = data.switchPosition;
 
-  String jsonString;
-  serializeJson(doc, jsonString);
+    String jsonString;
+    serializeJson(doc, jsonString);
 
-  ws.textAll(jsonString);
+    ws.textAll(jsonString);
+    xSemaphoreGive(dataMutex);
+  }
 }
 
 // ============================================================================
