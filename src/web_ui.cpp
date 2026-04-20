@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "web_ui.h"
 #include "config.h"
+#include "serial_console.h"
 #include "generated/templates.h"
 
 // Helper to get logo (same for all)
@@ -14,6 +15,7 @@ String getLogo() {
 }
 
 String getWebPage(const String& path) {
+  SerialConsole::println("WEB: Requesting path: " + path);
   String page;
   String logo = getLogo();
 
@@ -24,6 +26,7 @@ String getWebPage(const String& path) {
   } else if (path == "/system" || path == "/system.html") {
     page = String(TEMPLATE_SYSTEM);
   } else {
+    SerialConsole::println("WEB: Path not found: " + path);
     return "";
   }
 

@@ -72,7 +72,11 @@ fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('deviceI
 function updateStatus(){fetch('/api/state').then(r=>r.json()).then(data=>{const set=(id,ok)=>{const el=document.getElementById(id);el.textContent=ok?'Connected':'Disconnected';el.className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium '+(ok?'bg-emerald-100 text-emerald-800':'bg-red-100 text-red-800');};set('wifiStatus',data.wifi_connected);set('meterStatus',data.meter_connected);set('mqttStatus',data.cloud_connected);});}updateStatus();setInterval(updateStatus,5000);
 let ws=null;let reconnectTimeout=null;
 function hexToAscii(hex){if(!hex||hex==='N/A')return'N/A';let result='';for(let i=0;i<hex.length;i+=2){const byte=parseInt(hex.substr(i,2),16);if(byte>=32&&byte<127)result+=String.fromCharCode(byte);}return result||hex;}
-function connect(){const url=(window.location.protocol==='https:'?'wss:':'ws:')+'//'+window.location.host+'/api/live';ws=new WebSocket(url);
+// Determine WS host dynamically based on location
+const host = window.location.hostname;
+const port = window.location.port;
+const url = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + host + (port ? ':' + port : '') + '/api/live';
+ws = new WebSocket(url);
 ws.onopen=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-emerald-500';document.getElementById('wsStatus').textContent='Connected';document.getElementById('wsStatusBadge').textContent='Connected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800';};
 ws.onmessage=(e)=>{
 const data=JSON.parse(e.data);
@@ -123,8 +127,15 @@ meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2</span>
 meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3</span><span class=text-amber-400>'+((data['1-0:71.7.0']||0)).toFixed(2)+' A</span></div>';
 meterHtml+='</div>';
 meterHtml+='</div>';
-document.getElementById('meterData').innerHTML=meterHtml;
-};
+// Fix SVG viewBox attribute issues in generated templates
+// This forces valid attributes
+const svgs = document.querySelectorAll('svg');
+svgs.forEach(svg => {
+  const vb = svg.getAttribute('viewBox');
+  if (vb && vb.includes('\\"')) {
+    svg.setAttribute('viewBox', vb.replace(/\\"/g, ''));
+  }
+});
 ws.onclose=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-red-500';document.getElementById('wsStatus').textContent='Disconnected';document.getElementById('wsStatusBadge').textContent='Disconnected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';reconnectTimeout=setTimeout(connect,3000);};
 };connect();
 window.addEventListener('beforeunload',()=>{if(ws)ws.close();if(reconnectTimeout)clearTimeout(reconnectTimeout);});

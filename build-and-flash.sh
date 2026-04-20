@@ -29,7 +29,7 @@ echo -e "${YELLOW}📦 Firmware binary location:${NC}"
 echo "   .pio/build/m5stack-core-esp32/firmware.bin"
 echo ""
 
-FIRMWARE_BIN=".pio/build/m5stack-core-esp32/firmware.bin"
+FIRMWARE_BIN=".pio/build/m5stack-atom/firmware.bin"
 REMOTE_PATH="/tmp/firmware.bin"
 # Remote serial flash: override with env (e.g. REMOTE_HOST=127.0.0.1 REMOTE_SSH_PORT=2222 REMOTE_KEY=~/.ssh/openwatt REMOTE_SERIAL=/dev/ttyUSB1)
 REMOTE_HOST="${REMOTE_HOST:-piflash}"
@@ -73,14 +73,14 @@ fi
 # Check if remote flash is requested
 if [ "$1" == "remote" ] || [ "$1" == "piflash" ]; then
   echo -e "${GREEN}📤 Copying firmware to ${REMOTE_SPEC}...${NC}"
-  
+
   scp "${SCP_OPTS[@]}" "$FIRMWARE_BIN" "${REMOTE_SPEC}:${REMOTE_PATH}"
-  
+
   if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Failed to copy firmware to ${REMOTE_SPEC}!${NC}"
     exit 1
   fi
-  
+
   echo -e "${GREEN}✅ Firmware copied to ${REMOTE_SPEC}:${REMOTE_PATH}${NC}"
   echo ""
 
@@ -98,12 +98,12 @@ if [ "$1" == "remote" ] || [ "$1" == "piflash" ]; then
   fi
   echo ""
   echo -e "${GREEN}📤 Flashing firmware via ${REMOTE_SPEC} (${REMOTE_SERIAL})...${NC}"
-  
+
   MAX_RETRIES=3
   RETRY_COUNT=0
-  
+
   while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if ssh "${SSH_OPTS[@]}" "${REMOTE_SPEC}" "if command -v esptool.py &> /dev/null; then esptool.py --baud 115200 --chip esp32 --port ${REMOTE_SERIAL} --flash_size 4MB --flash_mode dio write_flash 0x10000 ${REMOTE_PATH}; else esptool --baud 115200 --chip esp32 --port ${REMOTE_SERIAL} write_flash -z --flash_size 4MB 0x10000 ${REMOTE_PATH}; fi" 2>&1; then
+    if ssh "${SSH_OPTS[@]}" "${REMOTE_SPEC}" "if command -v esptool.py &> /dev/null; then esptool.py --baud 115200 --chip esp32 --port ${REMOTE_SERIAL} write_flash 0x10000 ${REMOTE_PATH}; else esptool --baud 115200 --chip esp32 --port ${REMOTE_SERIAL} write_flash -z 0x10000 ${REMOTE_PATH}; fi" 2>&1; then
       FLASH_SUCCESS=true
       break
     else
@@ -115,7 +115,7 @@ if [ "$1" == "remote" ] || [ "$1" == "piflash" ]; then
       fi
     fi
   done
-  
+
   if [ "$FLASH_SUCCESS" = true ]; then
     echo -e "${GREEN}✅ Flash successful!${NC}"
     ssh "${SSH_OPTS[@]}" "${REMOTE_SPEC}" "rm -f ${REMOTE_PATH}"
@@ -127,7 +127,7 @@ if [ "$1" == "remote" ] || [ "$1" == "piflash" ]; then
     echo "   3. Try manually: ssh ${SSH_OPTS[*]} ${REMOTE_SPEC} 'esptool.py --baud 115200 --chip esp32 --port ${REMOTE_SERIAL} write_flash 0x10000 ${REMOTE_PATH}'"
     exit 1
   fi
-  
+
   exit 0
 fi
 
@@ -136,7 +136,7 @@ if [ -z "$1" ]; then
   # Try to auto-detect first usbserial port (cu or tty on macOS)
   AUTO_PORT=$(ls /dev/cu.usbserial* 2>/dev/null | head -n 1)
   [[ -z "$AUTO_PORT" ]] && AUTO_PORT=$(ls /dev/tty.usbserial* 2>/dev/null | head -n 1)
-  
+
   if [ -n "$AUTO_PORT" ]; then
     echo -e "${YELLOW}🔍 Auto-detected port: ${AUTO_PORT}${NC}"
     PORT="$AUTO_PORT"
