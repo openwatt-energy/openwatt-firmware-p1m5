@@ -523,11 +523,6 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     request->send(200, "text/html", html);
   });
 
-  server.on("/live", HTTP_GET, [](AsyncWebServerRequest *request){
-    String html = getWebPage("/live");
-    request->send(200, "text/html", html);
-  });
-
   server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request){
     String html = getWebPage("/settings");
     request->send(200, "text/html", html);
