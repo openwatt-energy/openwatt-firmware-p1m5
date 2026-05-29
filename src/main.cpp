@@ -343,7 +343,9 @@ void publishMQTTStatus() {
     rebootCountLoaded = true;
     nvs_handle_t h;
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) == ESP_OK) {
-      rebootCount = nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, 0);
+      if (nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, &rebootCount) != ESP_OK) {
+        rebootCount = 0;
+      }
       rebootCount++;
       nvs_set_i32(h, NVS_KEY_REBOOT_COUNT, rebootCount);
       nvs_commit(h);
@@ -404,8 +406,186 @@ void publishToMQTT(const P1Data& data) {
 }
 #endif
 
+// ============================================================================
+// RAW DEBUG MODE
+// ============================================================================
+
+struct RawDebugState {
+  bool enabled = false;
+  unsigned long startTime = 0;
+  unsigned long duration = 0;  // Duration in seconds
+  String pendingRawTelegram = "";  // Store raw telegram to publish from main loop
+} rawDebugState;
+
+void checkRawDebugTimeout() {
+  if (rawDebugState.enabled) {
+    unsigned long elapsed = (millis() - rawDebugState.startTime) / 1000;  // Convert to seconds
+    if (elapsed >= rawDebugState.duration) {
+      SerialConsole::println("[DEBUG] Raw debug mode timeout reached, disabling");
+      rawDebugState.enabled = false;
+    }
+  }
+}
+
+void publishRawTelegram(const String& rawData) {
+  #if ENABLE_MQTT
+  if (!MQTTClient::isConnected() || !rawDebugState.enabled) {
+    return;
+  }
+
+  // Wrap raw data in JSON to prevent truncation issues with multi-line telegrams
+  JsonDocument doc;
+  doc["raw"] = rawData;
+  doc["timestamp"] = millis() / 1000;
+  doc["device_id"] = state.deviceId;
+  doc["length"] = rawData.length();
+
+  String jsonOutput;
+  serializeJson(doc, jsonOutput);
+
+  // Publish to raw data topic following same pattern: P1M5/<device_id>/raw
+  String topic = state.deviceId + "/raw";
+  MQTTClient::publish(topic, jsonOutput);
+
+  SerialConsole::println("[DEBUG] Published raw telegram (" + String(rawData.length()) + " bytes)");
+  #else
+  (void)rawData;
+  #endif
+}
+
+#if ENABLE_MQTT
+void handleMQTTCommand(const String& topic, const String& payload) {
+  SerialConsole::println("[MQTT] Command received on topic: " + topic);
+
+  // Parse JSON command
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, payload);
+
+  if (error) {
+    SerialConsole::println("[MQTT] JSON parse error: " + String(error.c_str()));
+    return;
+  }
+
+  if (!doc["cmd"].is<String>()) {
+    SerialConsole::println("[MQTT] No 'cmd' field in payload");
+    return;
+  }
+
+  String cmd = doc["cmd"].as<String>();
+
+  if (cmd == "enable_raw_debug") {
+    unsigned long duration = 300;  // Default 5 minutes
+    if (doc["duration"].is<unsigned long>()) {
+      duration = doc["duration"].as<unsigned long>();
+    }
+    rawDebugState.enabled = true;
+    rawDebugState.startTime = millis();
+    rawDebugState.duration = duration;
+    SerialConsole::println("[DEBUG] Raw debug mode enabled for " + String(duration) + " seconds");
+  }
+  else if (cmd == "disable_raw_debug") {
+    rawDebugState.enabled = false;
+    SerialConsole::println("[DEBUG] Raw debug mode disabled");
+  }
+  else if (cmd == "reboot") {
+    SerialConsole::println("[MQTT] Reboot command received - restarting in 2 seconds");
+    delay(2000);
+    ESP.restart();
+  }
+  else if (cmd == "check_ota") {
+    SerialConsole::println("[MQTT] Manual OTA check requested");
+    #if ENABLE_OTA
+    bool updateAvailable = OTAUpdate::checkUpdate();
+    if (updateAvailable) {
+      SerialConsole::println("[OTA] Update found and initiated");
+    } else {
+      SerialConsole::println("[OTA] No update available or check failed");
+    }
+    #else
+    SerialConsole::println("[OTA] OTA updates are disabled in this build");
+    #endif
+  }
+  else if (cmd == "set_creos_key") {
+    if (!doc["key"].is<String>()) {
+      SerialConsole::println("[MQTT] Error: 'key' field missing");
+      return;
+    }
+    String keyHex = doc["key"].as<String>();
+    keyHex.trim();
+    if (keyHex.length() != 32) {
+      SerialConsole::println("[MQTT] Error: Key must be exactly 32 hex characters");
+      return;
+    }
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) == ESP_OK) {
+      if (nvs_set_str(h, NVS_KEY_CREOS_KEY, keyHex.c_str()) == ESP_OK) {
+        nvs_commit(h);
+        SerialConsole::println("[MQTT] Creos decryption key updated successfully via MQTT!");
+      }
+      nvs_close(h);
+    }
+  }
+  else if (cmd == "nvs_dump") {
+    SerialConsole::println("[MQTT] NVS dump requested");
+    JsonDocument nvsDoc;
+    nvsDoc["device_id"] = state.deviceId;
+    nvsDoc["wifi_ssid"] = preferences.getString("wifi_ssid", "");
+    nvsDoc["wifi_password_length"] = preferences.getString("wifi_password", "").length();
+
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
+      int rebootCount = 0;
+      if (nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, &rebootCount) == ESP_OK) {
+        nvsDoc["reboot_count"] = rebootCount;
+      }
+
+      size_t len = 0;
+      if (nvs_get_str(h, NVS_KEY_FINGERPRINT, NULL, &len) == ESP_OK && len > 0) {
+        char buf[len];
+        nvs_get_str(h, NVS_KEY_FINGERPRINT, buf, &len);
+        nvsDoc["fingerprint"] = String(buf);
+      }
+
+      len = 0;
+      if (nvs_get_str(h, NVS_KEY_CREOS_KEY, NULL, &len) == ESP_OK && len > 0) {
+        char buf[len];
+        nvs_get_str(h, NVS_KEY_CREOS_KEY, buf, &len);
+        nvsDoc["creos_key"] = String(buf);
+      }
+
+      len = 0;
+      if (nvs_get_str(h, "email", NULL, &len) == ESP_OK && len > 0) {
+        char buf[len];
+        nvs_get_str(h, "email", buf, &len);
+        nvsDoc["email"] = String(buf);
+      }
+      nvs_close(h);
+    }
+
+    MQTTConfig mqttCfg = MQTTClient::getConfig();
+    nvsDoc["mqtt_host"] = mqttCfg.host;
+    nvsDoc["mqtt_topic"] = mqttCfg.topic;
+
+    String jsonOutput;
+    serializeJson(nvsDoc, jsonOutput);
+    String topicResp = state.deviceId + "/nvs_dump";
+    MQTTClient::publish(topicResp, jsonOutput);
+    SerialConsole::println("[MQTT] Published NVS dump to " + topicResp);
+  }
+  else {
+    SerialConsole::println("[MQTT] Unknown command: " + cmd);
+  }
+}
+#endif
+
 // Called from P1 reader task when a valid telegram received.
 void onP1DataReceived(const P1Data& data) {
+  #if ENABLE_MQTT
+  if (rawDebugState.enabled) {
+    rawDebugState.pendingRawTelegram = P1Reader::getLastRawTelegram();
+  }
+  #endif
+
   // Merge data - only update fields that have values in the new telegram
   // This handles meters that send different telegram types (energy vs voltage/current)
   if (data.equipmentId.length() > 0) latestData.equipmentId = data.equipmentId;
@@ -577,13 +757,45 @@ void setup() {
     delay(1000);
   }
 
-  // Read reboot count from NVS
+  // Dump NVS keys for diagnostics at boot
+  SerialConsole::println("--- NVS Diagnostics ---");
+  SerialConsole::println("  WiFi SSID: '" + preferences.getString("wifi_ssid", "") + "'");
+  SerialConsole::println("  WiFi Pass Length: " + String(preferences.getString("wifi_password", "").length()));
+
   nvs_handle_t h;
-  int rebootCount = 0;
   if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
+    int rebootCount = 0;
     nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, &rebootCount);
+    SerialConsole::println("  Reboot Count: " + String(rebootCount));
+
+    size_t len = 0;
+    if (nvs_get_str(h, NVS_KEY_FINGERPRINT, NULL, &len) == ESP_OK && len > 0) {
+      char buf[len];
+      nvs_get_str(h, NVS_KEY_FINGERPRINT, buf, &len);
+      SerialConsole::println("  Fingerprint: '" + String(buf) + "'");
+    } else {
+      SerialConsole::println("  Fingerprint: (empty/not set)");
+    }
+
+    len = 0;
+    if (nvs_get_str(h, NVS_KEY_CREOS_KEY, NULL, &len) == ESP_OK && len > 0) {
+      char buf[len];
+      nvs_get_str(h, NVS_KEY_CREOS_KEY, buf, &len);
+      SerialConsole::println("  Creos Key: '" + String(buf) + "'");
+    } else {
+      SerialConsole::println("  Creos Key: (empty/not set)");
+    }
+
+    len = 0;
+    if (nvs_get_str(h, "email", NULL, &len) == ESP_OK && len > 0) {
+      char buf[len];
+      nvs_get_str(h, "email", buf, &len);
+      SerialConsole::println("  User Email: '" + String(buf) + "'");
+    }
+
     nvs_close(h);
   }
+  SerialConsole::println("-----------------------");
 
   // Generate device ID and serial number
   state.deviceId = getDeviceId();
@@ -592,7 +804,6 @@ void setup() {
   SerialConsole::println("Device Info:");
   SerialConsole::println("  ID: " + state.deviceId);
   SerialConsole::println("  Serial: " + state.serialNumber);
-  SerialConsole::println("  Reboots: " + String(rebootCount));
   SerialConsole::println("");
   yield();
   delay(100);
@@ -628,6 +839,7 @@ void setup() {
     SerialConsole::println("MQTT: Set default topic to P1M5/");
   }
   MQTTClient::begin(preferences, state.deviceId, mqttSecretKey);
+  MQTTClient::setMessageCallback(handleMQTTCommand);
   yield();
   delay(100);
   #else
@@ -706,6 +918,14 @@ void loop() {
   #if ENABLE_MQTT
   MQTTClient::reconnect();
   MQTTClient::loop();
+  yield();
+
+  if (rawDebugState.enabled && rawDebugState.pendingRawTelegram.length() > 0) {
+    publishRawTelegram(rawDebugState.pendingRawTelegram);
+    rawDebugState.pendingRawTelegram = "";
+  }
+
+  checkRawDebugTimeout();
   yield();
 
   // Publish status periodically (firmware version, uptime, etc.)

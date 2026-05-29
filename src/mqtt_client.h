@@ -16,6 +16,9 @@ struct MQTTConfig {
   bool useTLS;
 };
 
+// Callback function type for MQTT message handlers
+typedef void (*MQTTMessageCallback)(const String& topic, const String& payload);
+
 class MQTTClient {
 public:
   static void begin(Preferences& prefs, const String& deviceId, const String& secretKey = "");
@@ -23,10 +26,11 @@ public:
   static void reconnect();
   static bool isConnected();
   static void publish(const String& topic, const String& payload);
+  static void setMessageCallback(MQTTMessageCallback callback);
   static MQTTConfig getConfig();
   static void setConfig(const MQTTConfig& config);
   static void saveConfig(Preferences& prefs);
-  
+
 private:
   static PubSubClient* client;
   static WiFiClientSecure wifiClientSecure;
@@ -35,7 +39,10 @@ private:
   static String deviceId;
   static String secretKey;
   static bool useSecure;
+  static MQTTMessageCallback messageCallback;
   static String generatePassword();
+  static void mqttCallback(char* topic, byte* payload, unsigned int length);
+  static void subscribeToTopics();
 };
 
 #endif

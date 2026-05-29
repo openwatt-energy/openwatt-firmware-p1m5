@@ -12,7 +12,7 @@
 #endif
 
 // Firmware version (bump on release: minor = features, patch = fixes)
-#define FIRMWARE_VERSION_BASE "v1.0.45"
+#define FIRMWARE_VERSION_BASE "v1.0.46"
 
 #ifdef FIRMWARE_VERSION_SUFFIX
   #define FIRMWARE_VERSION FIRMWARE_VERSION_BASE FIRMWARE_VERSION_SUFFIX
@@ -63,6 +63,7 @@
 #define NVS_KEY_MQTT_HOST "mqtt_host"
 #define NVS_KEY_MQTT_INTERVAL "mqtt_interval"
 #define NVS_KEY_REBOOT_COUNT "reboot_count"
+#define NVS_KEY_CREOS_KEY "creos_key"
 
 // NVS namespace
 #define NVS_NAMESPACE "openwatt"

@@ -1,143 +1,145 @@
-<!DOCTYPE html><html lang=en class=scroll-smooth><head>
-<meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Dashboard - {{CUSTOMER_NAME}}</title>
-<script src=https://cdn.tailwindcss.com></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel=stylesheet>
-<style>body{font-family:Inter,system-ui,sans-serif}</style>
-</head><body class=bg-gray-50 text-gray-900 min-h-screen>
-<nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
-<div class="max-w-7xl mx-auto px-4"><div class="flex justify-between h-16">
-<div class="flex items-center gap-3"><div class=text-blue-600>{{LOGO}}</div></div>
-<div class="flex items-center gap-1">
-<a href=/ class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700">Dashboard</a>
-<a href=/settings class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">Settings</a>
-<a href=/system class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">System</a>
-</div></div></div></nav>
-<main class="max-w-7xl mx-auto px-4 py-6">
-<div class=mb-6><h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-<p class="mt-1 text-sm text-gray-500" id=deviceInfo>Loading...</p></div>
-<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-<div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-<svg class="w-5 h-5 text-emerald-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
-</div><div><p class="text-sm font-medium text-gray-600">WiFi</p>
-<span id=wifiStatus class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
-</div></div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-<div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-<svg class="w-5 h-5 text-blue-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-</div><div><p class="text-sm font-medium text-gray-600">Meter</p>
-<span id=meterStatus class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
-</div></div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-<div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-<svg class="w-5 h-5 text-purple-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
-</div><div><p class="text-sm font-medium text-gray-600">MQTT</p>
-<span id=mqttStatus class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
-</div></div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-<div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
-<svg class="w-5 h-5 text-orange-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-</div><div><p class="text-sm font-medium text-gray-600">WebSocket</p>
-<span id=wsStatusBadge class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
-</div></div></div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-<h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h2>
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-<div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-<p class="text-sm font-medium text-blue-600 mb-1">Power Import</p>
-<p class="text-2xl font-bold text-blue-900" id=powerImport>--</p><p class="text-xs text-blue-600">kW</p></div>
-<div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-<p class="text-sm font-medium text-green-600 mb-1">Power Export</p>
-<p class="text-2xl font-bold text-green-900" id=powerExport>--</p><p class="text-xs text-green-600">kW</p></div>
-<div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-<p class="text-sm font-medium text-purple-600 mb-1">Total Consumed</p>
-<p class="text-2xl font-bold text-purple-900" id=totalCons>--</p><p class="text-xs text-purple-600">kWh</p></div>
-<div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
-<p class="text-sm font-medium text-orange-600 mb-1">Total Produced</p>
-<p class="text-2xl font-bold text-orange-900" id=totalProd>--</p><p class="text-xs text-orange-600">kWh</p></div>
-</div></div>
-<div class="bg-gray-900 rounded-xl shadow-lg overflow-hidden">
-<div class="p-4 border-b border-gray-800 flex items-center justify-between">
-<h2 class="text-white font-semibold">Real-time Meter Data</h2>
-<div class="flex items-center gap-2">
-<span id=wsIndicator class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-<span id=wsStatus class="text-sm text-gray-400">Disconnected</span>
-</div></div>
-<div id=meterData class="p-4 font-mono text-sm space-y-1"><div class=text-gray-500>Connecting to WebSocket...</div></div>
-</div>
-</main>
-<script>
-fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('deviceInfo').textContent=d.firmware_version+' | '+d.device_id;});
-function updateStatus(){fetch('/api/state').then(r=>r.json()).then(data=>{const set=(id,ok)=>{const el=document.getElementById(id);el.textContent=ok?'Connected':'Disconnected';el.className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium '+(ok?'bg-emerald-100 text-emerald-800':'bg-red-100 text-red-800');};set('wifiStatus',data.wifi_connected);set('meterStatus',data.meter_connected);set('mqttStatus',data.cloud_connected);});}updateStatus();setInterval(updateStatus,5000);
-let ws=null;let reconnectTimeout=null;
-function hexToAscii(hex){if(!hex||hex==='N/A')return'N/A';let result='';for(let i=0;i<hex.length;i+=2){const byte=parseInt(hex.substr(i,2),16);if(byte>=32&&byte<127)result+=String.fromCharCode(byte);}return result||hex;}
-// Determine WS host dynamically based on location
-const host = window.location.hostname;
-const port = window.location.port;
-const url = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + host + (port ? ':' + port : '') + '/api/live';
-ws = new WebSocket(url);
-ws.onopen=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-emerald-500';document.getElementById('wsStatus').textContent='Connected';document.getElementById('wsStatusBadge').textContent='Connected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800';};
-ws.onmessage=(e)=>{
-const data=JSON.parse(e.data);
-const meterId=hexToAscii(data['0-0:96.1.1']||'');
-const importKw=(data['1-0:1.7.0']||0);
-const exportKw=(data['1-0:2.7.0']||0);
-const cons1=(data['1-0:1.8.1']||0);
-const cons2=(data['1-0:1.8.2']||0);
-const prod1=(data['1-0:2.8.1']||0);
-const prod2=(data['1-0:2.8.2']||0);
-document.getElementById('powerImport').textContent=importKw.toFixed(3);
-document.getElementById('powerExport').textContent=exportKw.toFixed(3);
-document.getElementById('totalCons').textContent=(cons1+cons2).toFixed(1);
-document.getElementById('totalProd').textContent=(prod1+prod2).toFixed(1);
-let meterHtml='<div class=space-y-4>';
-meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Identification</h3>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Meter ID (ASCII)</span><span class=text-emerald-400>'+meterId+'</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Equipment ID (Hex)</span><span class=text-blue-400>'+(data['0-0:96.1.1']||'N/A')+'</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Meter Model</span><span class=text-purple-400>'+(data['0-0:96.1.4']||'N/A')+'</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Timestamp</span><span class=text-yellow-400>'+(data['0-0:1.0.0']||'N/A')+'</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Tariff</span><span class=text-pink-400>'+(data['0-0:96.14.0']||'N/A')+'</span></div>';
-meterHtml+='</div>';
-meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Power (kW)</h3>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Total Import</span><span class=text-yellow-400>'+importKw.toFixed(3)+' kW</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Total Export</span><span class=text-green-400>'+exportKw.toFixed(3)+' kW</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1 Import</span><span class=text-blue-400>'+((data['1-0:21.7.0']||0)).toFixed(3)+' kW</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2 Import</span><span class=text-blue-400>'+((data['1-0:41.7.0']||0)).toFixed(3)+' kW</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3 Import</span><span class=text-blue-400>'+((data['1-0:61.7.0']||0)).toFixed(3)+' kW</span></div>';
-// ADDED PHASE EXPORTS
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1 Export</span><span class=text-green-400>'+((data['1-0:22.7.0']||0)).toFixed(3)+' kW</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2 Export</span><span class=text-green-400>'+((data['1-0:42.7.0']||0)).toFixed(3)+' kW</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3 Export</span><span class=text-green-400>'+((data['1-0:62.7.0']||0)).toFixed(3)+' kW</span></div>';
-meterHtml+='</div>';
-meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Energy (kWh)</h3>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Consumption T1</span><span class=text-purple-400>'+cons1.toFixed(3)+' kWh</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Consumption T2</span><span class=text-pink-400>'+cons2.toFixed(3)+' kWh</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Production T1</span><span class=text-cyan-400>'+prod1.toFixed(3)+' kWh</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Production T2</span><span class=text-teal-400>'+prod2.toFixed(3)+' kWh</span></div>';
-meterHtml+='</div>';
-meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Voltage (V)</h3>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1</span><span class=text-red-400>'+((data['1-0:32.7.0']||0)).toFixed(1)+' V</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2</span><span class=text-red-400>'+((data['1-0:52.7.0']||0)).toFixed(1)+' V</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3</span><span class=text-red-400>'+((data['1-0:72.7.0']||0)).toFixed(1)+' V</span></div>';
-meterHtml+='</div>';
-meterHtml+='<div><h3 class=\"text-orange-400 font-semibold mb-2\">Current (A)</h3>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1</span><span class=text-amber-400>'+((data['1-0:31.7.0']||0)).toFixed(2)+' A</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2</span><span class=text-amber-400>'+((data['1-0:51.7.0']||0)).toFixed(2)+' A</span></div>';
-meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3</span><span class=text-amber-400>'+((data['1-0:71.7.0']||0)).toFixed(2)+' A</span></div>';
-meterHtml+='</div>';
-meterHtml+='</div>';
-// Fix SVG viewBox attribute issues in generated templates
-// This forces valid attributes
-const svgs = document.querySelectorAll('svg');
-svgs.forEach(svg => {
-  const vb = svg.getAttribute('viewBox');
-  if (vb && vb.includes('\\"')) {
-    svg.setAttribute('viewBox', vb.replace(/\\"/g, ''));
-  }
-});
-ws.onclose=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-red-500';document.getElementById('wsStatus').textContent='Disconnected';document.getElementById('wsStatusBadge').textContent='Disconnected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';reconnectTimeout=setTimeout(connect,3000);};
-};connect();
-window.addEventListener('beforeunload',()=>{if(ws)ws.close();if(reconnectTimeout)clearTimeout(reconnectTimeout);});
-</script>
-</body></html>
+<!DOCTYPE html><html lang=en>
+<head>
+    <meta charset=UTF-8>
+    <meta name=viewport content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>{{CUSTOMER_NAME}} P1 Reader - Dashboard</title>
+    {{THEME_CSS}}
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4"><div class="flex justify-between h-16">
+            <div class="flex items-center gap-3"><div class="text-blue-600">{{LOGO}}</div></div>
+            <div class="flex items-center gap-1">
+                <a href=/ class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700">Dashboard</a>
+                <a href=/settings class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">Settings</a>
+                <a href=/system class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">System</a>
+            </div>
+        </div></div>
+    </nav>
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <div class="mb-6"><h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p class="mt-1 text-sm text-gray-500" id=deviceInfo>Loading...</p></div>
+        <!-- Status Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-emerald-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                </div><div><p class="text-sm font-medium text-gray-600">WiFi</p>
+                <span id=wifiStatus class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
+                </div></div></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div><div><p class="text-sm font-medium text-gray-600">Meter</p>
+                <span id=meterStatus class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
+                </div></div></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-purple-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+                </div><div><p class="text-sm font-medium text-gray-600">MQTT</p>
+                <span id=mqttStatus class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
+                </div></div></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-orange-600" fill=none stroke=currentColor viewBox="0 0 24 24"><path stroke-linecap=round stroke-linejoin=round stroke-width=2 d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div><div><p class="text-sm font-medium text-gray-600">WebSocket</p>
+                <span id=wsStatusBadge class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disconnected</span>
+                </div></div></div>
+        </div>
+        <!-- Quick Stats -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
+                    <p class="text-sm font-medium text-red-600 mb-1">Power Import</p>
+                    <p class="text-2xl font-bold text-red-900" id=powerImport>--</p><p class="text-xs text-red-600">kW</p></div>
+                <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                    <p class="text-sm font-medium text-green-600 mb-1">Power Export</p>
+                    <p class="text-2xl font-bold text-green-900" id=powerExport>--</p><p class="text-xs text-green-600">kW</p></div>
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                    <p class="text-sm font-medium text-purple-600 mb-1">Total Consumed</p>
+                    <p class="text-2xl font-bold text-purple-900" id=totalCons>--</p><p class="text-xs text-purple-600">kWh</p></div>
+                <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
+                    <p class="text-sm font-medium text-orange-600 mb-1">Total Produced</p>
+                    <p class="text-2xl font-bold text-orange-900" id=totalProd>--</p><p class="text-xs text-orange-600">kWh</p></div>
+            </div>
+        </div>
+        <!-- Real-time Meter Data -->
+        <div class="bg-gray-900 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+                <h2 class="text-white font-semibold">Real-time Meter Data</h2>
+                <div class="flex items-center gap-2">
+                    <span id=wsIndicator class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    <span id=wsStatus class="text-sm text-gray-400">Disconnected</span>
+                </div>
+            </div>
+            <div id=meterData class="p-4 font-mono text-sm space-y-1"><div class="text-gray-500">Connecting...</div></div>
+        </div>
+    </main>
+    <footer class="mt-8 pb-6 text-center text-xs text-gray-400">
+        <a href="https://openwatt.eu" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 transition-colors">OpenWatt</a>
+    </footer>
+    <script>
+        fetch('/api/system').then(r=>r.json()).then(d=>{document.getElementById('deviceInfo').textContent=d.firmware_version+' | '+d.device_id;});
+        function updateStatus(){fetch('/api/state').then(r=>r.json()).then(data=>{if(data.ap_mode){window.location.href='/settings';return;}const set=(id,ok)=>{const el=document.getElementById(id);el.textContent=ok?'Connected':'Disconnected';el.className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium '+(ok?'bg-emerald-100 text-emerald-800':'bg-red-100 text-red-800');};set('wifiStatus',data.wifi_connected);set('meterStatus',data.meter_connected);set('mqttStatus',data.cloud_connected);});}updateStatus();setInterval(updateStatus,5000);
+        let ws=null;let reconnectTimeout=null;
+        function hexToAscii(hex){if(!hex||hex==='N/A')return'N/A';let result='';for(let i=0;i<hex.length;i+=2){const byte=parseInt(hex.substr(i,2),16);if(byte>=32&&byte<127)result+=String.fromCharCode(byte);}return result||hex;}
+        function connect(){const url=(window.location.protocol==='https:'?'wss:':'ws:')+'//'+window.location.host+'/api/live';ws=new WebSocket(url);
+        ws.onopen=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-emerald-500';document.getElementById('wsStatus').textContent='Connected';document.getElementById('wsStatusBadge').textContent='Connected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800';};
+        ws.onmessage=(e)=>{
+        const data=JSON.parse(e.data);
+        const meterId=hexToAscii(data['0-0:96.1.1']||'');
+        const importKw=(data['1-0:1.7.0']||0);
+        const exportKw=(data['1-0:2.7.0']||0);
+        const cons1=(data['1-0:1.8.1']||0);
+        const cons2=(data['1-0:1.8.2']||0);
+        const prod1=(data['1-0:2.8.1']||0);
+        const prod2=(data['1-0:2.8.2']||0);
+        document.getElementById('powerImport').textContent=importKw.toFixed(3);
+        document.getElementById('powerExport').textContent=exportKw.toFixed(3);
+        document.getElementById('totalCons').textContent=(cons1+cons2).toFixed(1);
+        document.getElementById('totalProd').textContent=(prod1+prod2).toFixed(1);
+        let meterHtml='<div class="space-y-4">';
+        meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Identification</h3>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Meter ID (ASCII)</span><span class="text-emerald-400">'+meterId+'</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Equipment ID (Hex)</span><span class="text-blue-400">'+(data['0-0:96.1.1']||'N/A')+'</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Meter Model</span><span class="text-purple-400">'+(data['0-0:96.1.4']||'N/A')+'</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Timestamp</span><span class="text-yellow-400">'+(data['0-0:1.0.0']||'N/A')+'</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Tariff</span><span class="text-pink-400">'+(data['0-0:96.14.0']||'N/A')+'</span></div>';
+        meterHtml+='</div>';
+        meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Power (kW)</h3>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Total Import</span><span class="text-yellow-400">'+importKw.toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Total Export</span><span class="text-green-400">'+exportKw.toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1 Import</span><span class="text-blue-400">'+((data['1-0:21.7.0']||0)).toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2 Import</span><span class="text-blue-400">'+((data['1-0:41.7.0']||0)).toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3 Import</span><span class="text-blue-400">'+((data['1-0:61.7.0']||0)).toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1 Export</span><span class="text-green-400">'+((data['1-0:22.7.0']||0)).toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2 Export</span><span class="text-green-400">'+((data['1-0:42.7.0']||0)).toFixed(3)+' kW</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3 Export</span><span class="text-green-400">'+((data['1-0:62.7.0']||0)).toFixed(3)+' kW</span></div>';
+        meterHtml+='</div>';
+        meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Energy (kWh)</h3>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Consumption T1</span><span class="text-purple-400">'+cons1.toFixed(3)+' kWh</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Consumption T2</span><span class="text-pink-400">'+cons2.toFixed(3)+' kWh</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Production T1</span><span class="text-cyan-400">'+prod1.toFixed(3)+' kWh</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>Production T2</span><span class="text-teal-400">'+prod2.toFixed(3)+' kWh</span></div>';
+        meterHtml+='</div>';
+        meterHtml+='<div class="border-b border-gray-700 pb-3"><h3 class="text-orange-400 font-semibold mb-2">Voltage (V)</h3>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1</span><span class="text-red-400">'+((data['1-0:32.7.0']||0)).toFixed(1)+' V</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2</span><span class="text-red-400">'+((data['1-0:52.7.0']||0)).toFixed(1)+' V</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3</span><span class="text-red-400">'+((data['1-0:72.7.0']||0)).toFixed(1)+' V</span></div>';
+        meterHtml+='</div>';
+        meterHtml+='<div><h3 class=\"text-orange-400 font-semibold mb-2\">Current (A)</h3>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L1</span><span class="text-amber-400">'+((data['1-0:31.7.0']||0)).toFixed(2)+' A</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L2</span><span class="text-amber-400">'+((data['1-0:51.7.0']||0)).toFixed(2)+' A</span></div>';
+        meterHtml+='<div class="flex justify-between text-gray-400 py-1"><span>L3</span><span class="text-amber-400">'+((data['1-0:71.7.0']||0)).toFixed(2)+' A</span></div>';
+        meterHtml+='</div>';
+        meterHtml+='</div>';
+        document.getElementById('meterData').innerHTML=meterHtml;
+        };
+        ws.onclose=()=>{document.getElementById('wsIndicator').className='w-2.5 h-2.5 rounded-full bg-red-500';document.getElementById('wsStatus').textContent='Disconnected';document.getElementById('wsStatusBadge').textContent='Disconnected';document.getElementById('wsStatusBadge').className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';reconnectTimeout=setTimeout(connect,3000);};
+        };connect();
+        window.addEventListener('beforeunload',()=>{if(ws)ws.close();if(reconnectTimeout)clearTimeout(reconnectTimeout);});
+    </script>
+</body>
+</html>

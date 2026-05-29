@@ -1,8 +1,8 @@
 {
-  "customer": "soliseco",
-  "display_name": "SolisEco",
-  "fingerprint_default": "",
-  "ap_ssid_prefix": "SolisEco",
+  "customer": "creos",
+  "display_name": "Creos",
+  "fingerprint_default": "REDACTED_FINGERPRINT",
+  "ap_ssid_prefix": "Creos",
   "salt_string": "CHANGE_ME_SALT",
   "mqtt": {
     "broker_host": "mqtt.example.com",
@@ -15,9 +15,9 @@
     "mqtt_settings_ui": false
   },
   "theme": {
-    "primary": "#22c55e",
+    "primary": "#ea580c",
     "background": "#ffffff",
     "text": "#111827",
-    "accent": "#16a34a"
+    "accent": "#c2410c"
   }
 }

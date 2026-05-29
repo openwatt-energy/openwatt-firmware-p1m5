@@ -17,6 +17,7 @@ static bool wifiConnected = false;
 static bool apEnabled = true;
 static int connectAttempts = 0;
 static unsigned long connectStartTime = 0;
+static unsigned long apEnabledStartTime = 0;
 
 void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
   SerialConsole::println("Starting WiFi...");
@@ -312,7 +313,21 @@ void WiFiManager::checkStatus(Preferences& prefs) {
 
         SerialConsole::println("AP fallback enabled: " + WiFi.softAPIP().toString());
         apEnabled = true;
-        connectAttempts = 0;  // Stop retrying until user saves new credentials
+        apEnabledStartTime = now;
+        connectAttempts = 0;  // Stop retrying until 5 mins later
+      }
+    }
+  } else if (apEnabled) {
+    // AP Mode - Check if 4 minutes passed (240,000 ms)
+    if (now - apEnabledStartTime > 240000) {
+      WiFiConfig config = loadCredentials(prefs);
+      if (config.ssid.length() > 0) {
+        SerialConsole::println("WiFi: AP mode timeout (4 mins). Rebooting to attempt fresh WiFi connection...");
+        delay(1000);
+        ESP.restart();
+      } else {
+        // No saved credentials, keep AP mode but reset timer to avoid overflow
+        apEnabledStartTime = now;
       }
     }
   }

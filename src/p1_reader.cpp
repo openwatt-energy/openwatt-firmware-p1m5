@@ -2,9 +2,11 @@
 #include "p1_reader.h"
 #include "p1_dispatch.h"
 #include "serial_console.h"
+#include "dlms_decrypt.h"
 #include <HardwareSerial.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <nvs.h>
 
 // Plan-d-io P1-dongle hardware uses Serial1 on GPIO 21/22
 #define P1_UART_NUM      1
@@ -20,21 +22,22 @@ bool P1Reader::meterConnected = false;
 unsigned long P1Reader::bytesReceived = 0;
 String P1Reader::lastRawTelegram = "";
 unsigned long P1Reader::telegramCount = 0;
+RawDebugCheckCallback P1Reader::rawDebugCallback = nullptr;
 static bool p1SerialInitDone = false;
 
 static float extractFloatValue(const String& line) {
   int startIdx = line.indexOf('(');
   int endIdx = line.indexOf('*');  // Try to find unit separator first
-  
+
   // If no unit separator, look for closing parenthesis
   if (endIdx == -1) {
     endIdx = line.indexOf(')');
   }
-  
+
   if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx) {
     return 0.0;
   }
-  
+
   String valueStr = line.substring(startIdx + 1, endIdx);
   return valueStr.toFloat();
 }
@@ -42,22 +45,22 @@ static float extractFloatValue(const String& line) {
 static String extractStringValue(const String& line) {
   int startIdx = line.indexOf('(');
   int endIdx = line.indexOf(')');
-  
+
   if (startIdx == -1 || endIdx == -1) {
     return "";
   }
-  
+
   return line.substring(startIdx + 1, endIdx);
 }
 
 static int extractIntValue(const String& line) {
   int startIdx = line.indexOf('(');
   int endIdx = line.indexOf(')');
-  
+
   if (startIdx == -1 || endIdx == -1) {
     return 0;
   }
-  
+
   String valueStr = line.substring(startIdx + 1, endIdx);
   return valueStr.toInt();
 }
@@ -84,15 +87,15 @@ static bool validateCRC(const String& telegram) {
   if (crcIdx == -1) {
     return false;  // No CRC marker found
   }
-  
+
   // Extract CRC from telegram (4 hex characters after '!')
   if (telegram.length() < crcIdx + 5) {
     return false;  // CRC not complete
   }
-  
+
   String crcStr = telegram.substring(crcIdx + 1, crcIdx + 5);
   uint16_t receivedCRC = 0;
-  
+
   // Parse hex CRC
   for (int i = 0; i < 4; i++) {
     char c = crcStr.charAt(i);
@@ -108,63 +111,63 @@ static bool validateCRC(const String& telegram) {
     }
     receivedCRC = (receivedCRC << 4) | nibble;
   }
-  
+
   // Calculate CRC for telegram up to '!' (excluding CRC itself)
   String telegramWithoutCRC = telegram.substring(0, crcIdx + 1);
   uint16_t calculatedCRC = calculateCRC16(telegramWithoutCRC.c_str(), telegramWithoutCRC.length());
-  
+
   return (calculatedCRC == receivedCRC);
 }
 
 P1Data P1Reader::parseTelegram(const String& telegram) {
   P1Data data;
   data.valid = false;
-  
+
   // Validate telegram starts with '/'
   if (telegram.length() == 0 || telegram[0] != '/') {
     SerialConsole::println("Invalid telegram: doesn't start with '/'");
     return data;
   }
-  
+
   // Validate CRC checksum (log warning but don't fail - some meters have different CRC implementations)
   if (!validateCRC(telegram)) {
     SerialConsole::println("Warning: CRC checksum mismatch - accepting telegram anyway");
     // Continue parsing even if CRC fails - some Belgian meters use different CRC methods
   }
-  
+
   // Handle both \r\n and \n line endings
   String normalizedTelegram = telegram;
   normalizedTelegram.replace("\r\n", "\n");
   normalizedTelegram.replace("\r", "\n");
-  
+
   int startIdx = 0;
   int endIdx = 0;
   int lineCount = 0;
-  
+
   // Parse line by line
-  while ((endIdx = normalizedTelegram.indexOf('\n', startIdx)) != -1 || 
+  while ((endIdx = normalizedTelegram.indexOf('\n', startIdx)) != -1 ||
          (startIdx < normalizedTelegram.length() && endIdx == -1)) {
-    
+
     // Handle last line (might not end with \n)
     if (endIdx == -1) {
       endIdx = normalizedTelegram.length();
     }
-    
+
     String line = normalizedTelegram.substring(startIdx, endIdx);
     line.trim();
-    
+
     // Skip empty lines and CRC line
     if (line.length() == 0 || line[0] == '!') {
       startIdx = endIdx + 1;
       continue;
     }
-    
+
     lineCount++;
-    
+
     // Parse known OBIS codes (using indexOf for flexibility with unknown codes)
     // Verbose logging disabled - uncomment for debugging
     // SerialConsole::println("Parsing line [" + String(lineCount) + "]: " + line);
-    
+
     if (line.indexOf("0-0:96.1.1(") != -1) {
       data.equipmentId = extractStringValue(line);
       SerialConsole::println("  -> Equipment ID: " + data.equipmentId);
@@ -177,13 +180,13 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       data.tariffIndicator = extractStringValue(line).toInt();
       SerialConsole::println("  -> Tariff: " + String(data.tariffIndicator));
     }
-    else if (line.indexOf("1-0:1.8.1(") != -1) {
+    else if (line.indexOf("1-0:1.8.1(") != -1 || line.indexOf("1-0:1.8.0(") != -1) {
       data.consumptionT1 = extractFloatValue(line);
-      SerialConsole::println("  -> Consumption T1: " + String(data.consumptionT1));
+      SerialConsole::println("  -> Consumption T1 (or Total): " + String(data.consumptionT1));
     }
-    else if (line.indexOf("1-0:2.8.1(") != -1) {
+    else if (line.indexOf("1-0:2.8.1(") != -1 || line.indexOf("1-0:2.8.0(") != -1) {
       data.productionT1 = extractFloatValue(line);
-      SerialConsole::println("  -> Production T1: " + String(data.productionT1));
+      SerialConsole::println("  -> Production T1 (or Total): " + String(data.productionT1));
     }
     else if (line.indexOf("1-0:1.8.2(") != -1) {
       data.consumptionT2 = extractFloatValue(line);
@@ -316,6 +319,70 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       data.switchPosition = extractIntValue(line);
       SerialConsole::println("  -> Switch Position: " + String(data.switchPosition));
     }
+    // Extended Data (Luxembourg/Smarty)
+    else if (line.indexOf("1-0:3.8.0(") != -1) {
+      data.reactiveImportQ1 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:4.8.0(") != -1) {
+      data.reactiveExportQ4 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:3.7.0(") != -1) {
+      data.reactivePowerQ1 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:4.7.0(") != -1) {
+      data.reactivePowerQ4 = extractFloatValue(line);
+    }
+    else if (line.indexOf("0-0:17.0.0(") != -1) {
+      data.apparentPowerLimit = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:9.7.0(") != -1) {
+      data.apparentPowerImport = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:10.7.0(") != -1) {
+      data.apparentPowerExport = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-1:31.4.0(") != -1 || line.indexOf("1-0:31.4.0(") != -1) {
+      data.currentLimit = extractFloatValue(line);
+    }
+    else if (line.indexOf("0-0:96.7.21(") != -1) {
+      data.powerFailureCount = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:32.32.0(") != -1) {
+      data.voltageSagsL1 = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:52.32.0(") != -1) {
+      data.voltageSagsL2 = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:72.32.0(") != -1) {
+      data.voltageSagsL3 = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:32.36.0(") != -1) {
+      data.voltageSwellsL1 = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:52.36.0(") != -1) {
+      data.voltageSwellsL2 = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:72.36.0(") != -1) {
+      data.voltageSwellsL3 = extractIntValue(line);
+    }
+    else if (line.indexOf("1-0:23.7.0(") != -1) {
+      data.reactivePowerQ1L1 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:43.7.0(") != -1) {
+      data.reactivePowerQ1L2 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:63.7.0(") != -1) {
+      data.reactivePowerQ1L3 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:24.7.0(") != -1) {
+      data.reactivePowerQ4L1 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:44.7.0(") != -1) {
+      data.reactivePowerQ4L2 = extractFloatValue(line);
+    }
+    else if (line.indexOf("1-0:64.7.0(") != -1) {
+      data.reactivePowerQ4L3 = extractFloatValue(line);
+    }
     // Max demand with timestamp (format: 1-0:1.6.0(timestamp)(value*kW))
     else if (line.indexOf("1-0:1.6.0(") != -1) {
       // Extract timestamp: between first '(' and first ')'
@@ -324,7 +391,7 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       // Extract value: between second '(' and '*' before 'kW'
       int secondParen = line.indexOf('(', firstClose);
       int starIdx = line.indexOf('*', secondParen);
-      
+
       if (firstParen != -1 && firstClose != -1) {
         data.maxDemandTimestamp = line.substring(firstParen + 1, firstClose);
         SerialConsole::println("  -> Max Demand Timestamp: " + data.maxDemandTimestamp);
@@ -342,33 +409,33 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
         SerialConsole::println("  -> UNPARSED: " + line);
       }
     }
-    
+
     startIdx = endIdx + 1;
-    
+
     // Safety check: prevent infinite loop
     if (lineCount > 100) {
       SerialConsole::println("Warning: Telegram has more than 100 lines, stopping parse");
       break;
     }
   }
-  
+
   // Calculate total current from individual phases
   data.currentTotal = data.currentL1 + data.currentL2 + data.currentL3;
   if (data.currentTotal > 0) {
     SerialConsole::println("  -> Total Current: " + String(data.currentTotal) + " A");
   }
-  
+
   // Validate we got at least some data - be lenient for Fluvius meters
   bool hasAnyData = (data.equipmentId.length() > 0 || data.timestamp.length() > 0 ||
-                     data.consumptionT1 > 0 || data.consumptionT2 > 0 || 
+                     data.consumptionT1 > 0 || data.consumptionT2 > 0 ||
                      data.productionT1 > 0 || data.productionT2 > 0);
-  
+
   if (!hasAnyData) {
     SerialConsole::println("Warning: Telegram parsed but no data found");
   } else {
     SerialConsole::println("Parsed - Equipment: " + data.equipmentId + " T1: " + String(data.consumptionT1) + " T2: " + String(data.consumptionT2));
   }
-  
+
   data.valid = hasAnyData;
   return data;
 }
@@ -379,25 +446,263 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
     vTaskDelay(500 / portTICK_PERIOD_MS);
   }
   SerialConsole::println("P1 reader task started");
-  
+
   static char telegram[P1_BUFFER_SIZE];
   int telegramLen = 0;
   bool receiving = false;
   unsigned long lastCharTime = 0;
   const unsigned long TELEGRAM_TIMEOUT = 5000;  // 5 second timeout
-  
+
   while (true) {
     // Feed watchdog frequently but check serial more aggressively
     yield();
-    
+
+    // BINARY SNIFFER MODE: If raw debug mode is active, capture all bytes as hex
+    if (rawDebugCallback && rawDebugCallback()) {
+      static uint8_t binaryBuffer[P1_BUFFER_SIZE];
+      int snifferLen = 0;
+      unsigned long snifferStartTime = millis();
+      const unsigned long SNIFFER_TIMEOUT = 100;  // 100ms timeout to detect end of burst
+
+      // Read initial burst
+      while (Serial1.available() > 0 && snifferLen < P1_BUFFER_SIZE) {
+        binaryBuffer[snifferLen++] = Serial1.read();
+        bytesReceived++;
+      }
+
+      // If we captured something, wait for burst to complete
+      if (snifferLen > 0) {
+        bool burstComplete = false;
+        while (!burstComplete && snifferLen < P1_BUFFER_SIZE) {
+          if (Serial1.available() > 0) {
+            binaryBuffer[snifferLen++] = Serial1.read();
+            bytesReceived++;
+            snifferStartTime = millis();  // Reset timeout on new data
+          } else if (millis() - snifferStartTime > SNIFFER_TIMEOUT) {
+            burstComplete = true;  // No data for 100ms, burst complete
+          } else {
+            vTaskDelay(5 / portTICK_PERIOD_MS);  // Small delay
+            yield();
+          }
+        }
+
+        // Convert binary buffer to hex string for logging/MQTT
+        String hexString = "";
+        hexString.reserve(snifferLen * 2 + 1);
+        char hexByte[3];
+        for (int i = 0; i < snifferLen; i++) {
+          sprintf(hexByte, "%02X", binaryBuffer[i]);
+          hexString += hexByte;
+        }
+
+        SerialConsole::println("[SNIFFER] Captured " + String(snifferLen) + " bytes");
+        SerialConsole::println("[SNIFFER] Hex: " + hexString.substring(0, 64) + "...");
+
+        // Always store and publish raw hex for raw debug mode
+        lastRawTelegram = hexString;
+        telegramCount++;
+
+        // Check if this is an encrypted DLMS frame (starts with 0xDB)
+        if (DLMSDecrypt::isEncrypted(binaryBuffer, snifferLen)) {
+          SerialConsole::println("[DLMS] Encrypted frame detected (0xDB), attempting decryption...");
+
+          // Load decryption key from NVS
+          nvs_handle_t h;
+          String decryptionKey = "";
+          if (nvs_open("openwatt", NVS_READONLY, &h) == ESP_OK) {
+            size_t keyLen = 0;
+            if (nvs_get_str(h, NVS_KEY_CREOS_KEY, NULL, &keyLen) == ESP_OK && keyLen > 0) {
+              char* keyBuf = (char*)malloc(keyLen);
+              if (keyBuf && nvs_get_str(h, NVS_KEY_CREOS_KEY, keyBuf, &keyLen) == ESP_OK) {
+                decryptionKey = String(keyBuf);
+              }
+              free(keyBuf);
+            }
+            nvs_close(h);
+          }
+
+          if (decryptionKey.length() == 0) {
+            SerialConsole::println("[DLMS] Error: No decryption key configured. Use MQTT command: {\"cmd\":\"set_key\",\"key\":\"...\"}");
+            // Still publish the raw hex even without key
+            P1Data snifferData;
+            snifferData.valid = false;
+            snifferData.newTelegram = true;
+            onP1DataReceived(snifferData);
+          } else {
+            // Decrypt the frame
+            static uint8_t plaintextBuffer[P1_BUFFER_SIZE];
+            size_t plaintextLen = 0;
+
+            bool decryptOk = DLMSDecrypt::decrypt(
+              binaryBuffer,
+              snifferLen,
+              decryptionKey,
+              plaintextBuffer,
+              P1_BUFFER_SIZE,
+              &plaintextLen
+            );
+
+            if (decryptOk && plaintextLen > 0) {
+              // Convert plaintext to String and parse as normal P1 telegram
+              String decryptedTelegram = "";
+              decryptedTelegram.reserve(plaintextLen + 1);
+              for (size_t i = 0; i < plaintextLen; i++) {
+                decryptedTelegram += (char)plaintextBuffer[i];
+              }
+
+              SerialConsole::println("[DLMS] Decrypted telegram length: " + String(plaintextLen));
+              SerialConsole::println("[DLMS] First 100 chars: " + decryptedTelegram.substring(0, 100));
+
+              // Parse the decrypted telegram
+              P1Data data = parseTelegram(decryptedTelegram);
+
+              if (data.valid) {
+                SerialConsole::println("[DLMS] ✅ Successfully parsed decrypted telegram!");
+                // Publish both: raw hex via snifferData + parsed data via onP1DataReceived
+                P1Data snifferData;
+                snifferData.valid = false;
+                snifferData.newTelegram = true;
+                onP1DataReceived(snifferData);  // Publishes raw hex
+                onP1DataReceived(data);          // Publishes parsed data
+              } else {
+                SerialConsole::println("[DLMS] Error: Decrypted telegram is not valid DSMR format");
+                // Still publish raw hex even if parsing failed
+                P1Data snifferData;
+                snifferData.valid = false;
+                snifferData.newTelegram = true;
+                onP1DataReceived(snifferData);
+              }
+            } else {
+              SerialConsole::println("[DLMS] Decryption failed - check if key is correct");
+              // Still publish raw hex even if decryption failed
+              P1Data snifferData;
+              snifferData.valid = false;
+              snifferData.newTelegram = true;
+              onP1DataReceived(snifferData);
+            }
+          }
+        } else {
+          // Not encrypted, just publish the hex string (for raw debug mode)
+          P1Data snifferData;
+          snifferData.valid = false;  // Mark as invalid so it won't be parsed
+          snifferData.newTelegram = true;
+          onP1DataReceived(snifferData);
+        }
+
+        // Reset state
+        receiving = false;
+        telegramLen = 0;
+        meterConnected = true;
+      }
+
+      // Small delay before next sniff
+      vTaskDelay(50 / portTICK_PERIOD_MS);
+      continue;  // Skip normal telegram parsing
+    }
+
     // Read all available bytes in a tight loop (don't delay between bytes)
     while (Serial1.available() > 0) {
       char c = Serial1.read();
       bytesReceived++;
       lastCharTime = millis();
-      
-       if (c == '/') {
-        // Start of new telegram
+
+      // Check for encrypted DLMS frame (0xDB) or plaintext DSMR frame ('/')
+      if (c == 0xDB && !receiving) {
+        // Encrypted Luxembourg meter detected!
+        SerialConsole::println("[DLMS] Encrypted frame detected (0xDB), reading binary frame...");
+
+        // Switch to binary mode - buffer the entire encrypted frame
+        static uint8_t encryptedBuffer[P1_BUFFER_SIZE];
+        encryptedBuffer[0] = 0xDB;
+        int encryptedLen = 1;
+        unsigned long binaryStartTime = millis();
+        const unsigned long BINARY_TIMEOUT = 200;  // 200ms timeout for encrypted frame
+
+        // Read the entire encrypted frame
+        bool frameComplete = false;
+        while (!frameComplete && encryptedLen < P1_BUFFER_SIZE) {
+          if (Serial1.available() > 0) {
+            encryptedBuffer[encryptedLen++] = Serial1.read();
+            bytesReceived++;
+            binaryStartTime = millis();  // Reset timeout on new data
+          } else if (millis() - binaryStartTime > BINARY_TIMEOUT) {
+            frameComplete = true;  // No data for 200ms, frame complete
+          } else {
+            vTaskDelay(5 / portTICK_PERIOD_MS);
+            yield();
+          }
+        }
+
+        SerialConsole::println("[DLMS] Captured encrypted frame: " + String(encryptedLen) + " bytes");
+
+        // Load decryption key from NVS
+        nvs_handle_t h;
+        String decryptionKey = "";
+        if (nvs_open("openwatt", NVS_READONLY, &h) == ESP_OK) {
+          size_t keyLen = 0;
+          if (nvs_get_str(h, NVS_KEY_CREOS_KEY, NULL, &keyLen) == ESP_OK && keyLen > 0) {
+            char* keyBuf = (char*)malloc(keyLen);
+            if (keyBuf && nvs_get_str(h, NVS_KEY_CREOS_KEY, keyBuf, &keyLen) == ESP_OK) {
+              decryptionKey = String(keyBuf);
+            }
+            free(keyBuf);
+          }
+          nvs_close(h);
+        }
+
+        if (decryptionKey.length() == 0) {
+          SerialConsole::println("[DLMS] Error: No decryption key configured. Use MQTT: {\"cmd\":\"set_key\",\"key\":\"...\"}");
+        } else {
+          // Log key status (first 8 chars + length for debugging)
+          String keyPreview = decryptionKey.substring(0, 8) + "..." + " (length: " + String(decryptionKey.length()) + ")";
+          SerialConsole::println("[DLMS] Using decryption key: " + keyPreview);
+
+          // Decrypt the frame
+          static uint8_t plaintextBuffer[P1_BUFFER_SIZE];
+          size_t plaintextLen = 0;
+
+          bool decryptOk = DLMSDecrypt::decrypt(
+            encryptedBuffer,
+            encryptedLen,
+            decryptionKey,
+            plaintextBuffer,
+            P1_BUFFER_SIZE,
+            &plaintextLen
+          );
+
+          if (decryptOk && plaintextLen > 0) {
+            // Convert plaintext to String and parse
+            String decryptedTelegram = "";
+            decryptedTelegram.reserve(plaintextLen + 1);
+            for (size_t i = 0; i < plaintextLen; i++) {
+              decryptedTelegram += (char)plaintextBuffer[i];
+            }
+
+            telegramCount++;
+            lastRawTelegram = decryptedTelegram;
+
+            P1Data data = parseTelegram(decryptedTelegram);
+
+            if (data.valid) {
+              if (telegramCount % 10 == 0) {
+                SerialConsole::println("[DLMS] ✅ Telegram #" + String(telegramCount) + " decrypted and parsed successfully");
+              }
+              onP1DataReceived(data);
+            } else {
+              SerialConsole::println("[DLMS] Error: Decrypted telegram is not valid DSMR format");
+            }
+          } else {
+            SerialConsole::println("[DLMS] Decryption failed - check if key is correct");
+          }
+        }
+
+        meterConnected = true;
+        receiving = false;
+        telegramLen = 0;
+        continue;  // Skip normal processing
+      }
+      else if (c == '/') {
+        // Start of new plaintext telegram
         if (!receiving) {
           // Log timestamp when new telegram starts
           unsigned long now = millis();
@@ -418,19 +723,19 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
       else if (receiving && telegramLen < P1_BUFFER_SIZE - 2) {
         telegram[telegramLen++] = c;
         telegram[telegramLen] = '\0';
-        
+
         if (c == '!') {
           // Read CRC (4 hex characters) - with timeout protection
           unsigned long crcStartTime = millis();
           const unsigned long CRC_TIMEOUT = 1000;  // 1 second timeout for CRC
-          
+
           for (int i = 0; i < 4 && telegramLen < P1_BUFFER_SIZE - 2; i++) {
             // Wait for data with timeout
             while (!Serial1.available() && (millis() - crcStartTime < CRC_TIMEOUT)) {
               yield();
               vTaskDelay(10 / portTICK_PERIOD_MS);
             }
-            
+
             if (Serial1.available()) {
               telegram[telegramLen++] = Serial1.read();
               telegram[telegramLen] = '\0';
@@ -443,15 +748,15 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
               break;
             }
           }
-          
+
           if (receiving && telegramLen > 5) {
             // Complete telegram received, validate and parse
             telegramCount++;
             String telegramStr = String(telegram);
             lastRawTelegram = telegramStr;  // Store for API access
-            
+
             P1Data data = parseTelegram(telegramStr);
-            
+
             if (data.valid) {
               // Only log every 10th telegram to reduce spam (update ~10 seconds)
               if (telegramCount % 10 == 0) {
@@ -462,7 +767,7 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
               SerialConsole::println("[P1] Telegram #" + String(telegramCount) + " invalid");
             }
           }
-          
+
           receiving = false;
           telegramLen = 0;
           telegram[0] = '\0';
@@ -476,18 +781,18 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
         meterConnected = false;  // Mark as disconnected due to error
       }
     }
-    
+
     // Small delay when no data available to prevent task spinning
     if (Serial1.available() == 0) {
       vTaskDelay(5 / portTICK_PERIOD_MS);  // Only 5ms delay when idle
     }
-    
+
     // Timeout handling - if we're receiving but no data for 5 seconds, reset
     if (receiving && lastCharTime > 0) {
       unsigned long now = millis();
       // Handle millis() overflow
       unsigned long elapsed = (now >= lastCharTime) ? (now - lastCharTime) : (ULONG_MAX - lastCharTime + now);
-      
+
       if (elapsed > TELEGRAM_TIMEOUT) {
         SerialConsole::println("ERROR: Telegram timeout (" + String(elapsed) + "ms) - resetting");
         receiving = false;
@@ -497,12 +802,12 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
         meterConnected = false;  // Mark as disconnected due to timeout
       }
     }
-    
+
     // Check if meter disconnected (no data for extended period)
     if (!receiving && meterConnected && lastCharTime > 0) {
       unsigned long now = millis();
       unsigned long elapsed = (now >= lastCharTime) ? (now - lastCharTime) : (ULONG_MAX - lastCharTime + now);
-      
+
       if (elapsed > (TELEGRAM_TIMEOUT * 2)) {
         // No data for 2x timeout period, consider meter disconnected
         meterConnected = false;
@@ -520,7 +825,7 @@ void P1Reader::begin() {
     digitalWrite(P1_TRIGGER_PIN, HIGH);
     SerialConsole::println("P1 trigger pin (GPIO 25) set to HIGH for continuous mode");
     delay(100);  // Give meter time to wake up
-    
+
     // Deferred init: task does Serial1.setRxBufferSize/begin() after 4s to avoid WDT in setup()
     SerialConsole::println("Creating P1 reader task (Serial1 init deferred)...");
     BaseType_t taskResult = xTaskCreate(
@@ -531,7 +836,7 @@ void P1Reader::begin() {
       3,
       NULL
     );
-    
+
     if (taskResult == pdPASS) {
       SerialConsole::println("P1 reader task created");
     } else {
@@ -573,4 +878,8 @@ String P1Reader::getLastRawTelegram() {
 
 unsigned long P1Reader::getTelegramCount() {
   return telegramCount;
+}
+
+void P1Reader::setRawDebugCallback(RawDebugCheckCallback callback) {
+  rawDebugCallback = callback;
 }

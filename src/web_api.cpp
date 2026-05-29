@@ -4,6 +4,7 @@
 #include "serial_console.h"
 #include "web_ui.h"
 #include "ota_client.h"
+#include "generated/templates.h"
 #include <nvs.h>
 
 #if ENABLE_MQTT
@@ -89,6 +90,8 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     mqtt["port"] = 1883;
     mqtt["topic"] = "";
     #endif
+
+    doc["creos_key"] = getNvsString(NVS_KEY_CREOS_KEY);
 
     String response;
     serializeJson(doc, response);
@@ -321,6 +324,28 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     }
   );
 
+  // PATCH /api/config/creos_key
+  server.on("/api/config/creos_key", HTTP_PATCH, [](AsyncWebServerRequest *request){}, NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, (const char*)data);
+
+      if (!error && doc.containsKey("creos_key")) {
+        String key = doc["creos_key"].as<String>();
+        nvs_handle_t h;
+        if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) == ESP_OK) {
+          nvs_set_str(h, NVS_KEY_CREOS_KEY, key.c_str());
+          nvs_commit(h);
+          nvs_close(h);
+        }
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+        return;
+      }
+
+      request->send(400, "application/json", "{\"error\":\"Invalid request\"}");
+    }
+  );
+
   // PATCH /api/config/mqtt
   server.on("/api/config/mqtt", HTTP_PATCH, [](AsyncWebServerRequest *request){}, NULL,
     [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
@@ -518,7 +543,19 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
   });
 
   // Serve Web UI pages
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", (const uint8_t*)TEMPLATE_CSS, TEMPLATE_CSS_LEN);
+    // Explicitly set headers that help browsers identify the payload properly
+    response->addHeader("Cache-Control", "public, max-age=86400");
+    response->addHeader("Content-Type", "text/css; charset=utf-8");
+    request->send(response);
+  });
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+      request->redirect("/settings");
+      return;
+    }
     String html = getWebPage("/");
     request->send(200, "text/html", html);
   });
