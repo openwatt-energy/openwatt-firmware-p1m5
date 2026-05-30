@@ -952,6 +952,31 @@ void loop() {
   if (millis() - lastWiFiCheck > 1000) {
     lastWiFiCheck = millis();
     WiFiManager::checkStatus(preferences);
+
+    // Evaluate and update LED status
+    LEDStatus currentStatus = LEDHandler::getStatus();
+    // Do not override special states like BOOTING, ERROR, or OTA
+    if (currentStatus != LEDStatus::BOOTING &&
+        currentStatus != LEDStatus::ERROR_UNKNOWN &&
+        currentStatus != LEDStatus::OTA_IN_PROGRESS) {
+
+      bool isAP = (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA);
+      bool wifiConnected = WiFiManager::isConnected();
+      bool meterConnected = P1Reader::isConnected();
+
+      #if ENABLE_MQTT
+      bool cloudConnected = MQTTClient::isConnected();
+      #else
+      bool cloudConnected = false;
+      #endif
+
+      if (isAP && !wifiConnected) { // If AP mode is active and we are not connected as STA
+        LEDHandler::setAPMode(true, meterConnected, true);
+      } else {
+        LEDHandler::setWiFiStatus(wifiConnected, meterConnected, cloudConnected);
+      }
+    }
+
     yield();
   }
 

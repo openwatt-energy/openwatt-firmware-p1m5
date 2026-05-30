@@ -39,25 +39,26 @@ class LEDHandler {
 public:
   static void begin();
   static void loop();
-  
+
   // Status setters
   static void setBooting();
   static void setError();
   static void setOTAUpdate(bool inProgress);
   static void setAPMode(bool active, bool meterConnected, bool wifiAvailable);
   static void setWiFiStatus(bool connected, bool meterConnected, bool cloudConnected);
-  
+
   // Manual control
   static void setColor(CRGB color);
   static void setStatus(LEDStatus status);
-  
+  static LEDStatus getStatus();
+
 private:
   static LEDStatus currentStatus;
   static CRGB leds[1];  // Single LED for M5Stack Atom
   static unsigned long lastUpdate;
   static int blinkPhase;
   static bool blinkState;
-  
+
   static void updateLED();
   static void applyPattern(CRGB color, BlinkPattern pattern);
 };
