@@ -31,7 +31,9 @@
 #include "led_handler.h"
 #if ENABLE_MQTT
 #include "mqtt_client.h"
+#include "mqtt_command_handler.h"
 #endif
+#include "proxy_scanner.h"
 #if ENABLE_OTA
 #include "ota_update.h"
 #endif
@@ -456,6 +458,9 @@ void publishRawTelegram(const String& rawData) {
 #if ENABLE_MQTT
 void handleMQTTCommand(const String& topic, const String& payload) {
   SerialConsole::println("[MQTT] Command received on topic: " + topic);
+
+  // Forward to new MQTT command handler for proxies
+  MQTTCommandHandler::handleMessage(topic, payload);
 
   // Parse JSON command
   JsonDocument doc;
@@ -912,6 +917,8 @@ void loop() {
   P1Reader::loop();  // Serial1 init after ~5s (avoids WDT in P1 task)
   yield();
   LEDHandler::loop();
+  yield();
+  ProxyScanner::loop();
   yield();
 
   // Maintain MQTT connection (if enabled)
