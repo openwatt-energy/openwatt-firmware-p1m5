@@ -1,0 +1,70 @@
+{
+  "devices": {
+    "tesla_powerwall_v1": {
+      "description": "Tesla Powerwall (v1 or v2 with local gateway)",
+      "commands": {
+        "get_charge_level": {
+          "description": "Get current state of energy (SOE / battery percentage)",
+          "protocol": "http",
+          "request": {
+            "method": "GET",
+            "path": "/api/system_status/soe",
+            "headers": {
+              "Accept": "application/json"
+            }
+          },
+          "response_mapping": {
+            "charge_percentage": "percentage"
+          }
+        },
+        "get_meters": {
+          "description": "Get aggregate meter readings (solar, grid, load, battery)",
+          "protocol": "http",
+          "request": {
+            "method": "GET",
+            "path": "/api/meters/aggregates",
+            "headers": {
+              "Accept": "application/json"
+            }
+          },
+          "response_mapping": {
+            "solar_power_w": "solar.instant_power",
+            "grid_power_w": "site.instant_power",
+            "load_power_w": "load.instant_power",
+            "battery_power_w": "battery.instant_power"
+          }
+        },
+        "get_vitals": {
+          "description": "Get system vitals and status",
+          "protocol": "http",
+          "request": {
+            "method": "GET",
+            "path": "/api/1/vitals",
+            "headers": {
+              "Accept": "application/json"
+            }
+          }
+        }
+      }
+    },
+    "homewizard_p1": {
+      "description": "HomeWizard Wi-Fi P1 Meter",
+      "commands": {
+        "get_data": {
+          "description": "Get current meter readings",
+          "protocol": "http",
+          "request": {
+            "method": "GET",
+            "path": "/api/v1/data",
+            "headers": {}
+          },
+          "response_mapping": {
+            "active_power_w": "active_power_w",
+            "total_power_import_kwh": "total_power_import_kwh",
+            "total_power_export_kwh": "total_power_export_kwh"
+          }
+        }
+      }
+    }
+  }
+}
