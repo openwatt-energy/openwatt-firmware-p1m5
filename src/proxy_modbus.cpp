@@ -31,7 +31,17 @@ void ProxyModbus::handleRequest(JsonObject request, const String& responseTopic)
 
   if (!client.connect(ipStr.c_str(), port, 2000)) {
     DebugLogger::error(MODULE_PROXY, "Modbus connection failed to %s", ipStr.c_str());
-    return; // Optionally send error response
+
+    JsonDocument errDoc;
+    errDoc["action"] = "modbus_response";
+    errDoc["req_id"] = req_id;
+    errDoc["error"] = "connection_failed";
+
+    String responseStr;
+    serializeJson(errDoc, responseStr);
+    MQTTClient::publish(responseTopic, responseStr);
+
+    return;
   }
 
   uint8_t requestBuf[12];
