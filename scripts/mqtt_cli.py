@@ -88,7 +88,7 @@ class CLIClient:
                 "req_id": self.req_id,
                 "ip": self.args.target_ip,
                 "port": 502,
-                "unit_id": 3,
+                "unit_id": self.args.unit_id,
                 "function": 3,
                 "address": 30775,
                 "count": 2
@@ -99,7 +99,7 @@ class CLIClient:
                 "req_id": self.req_id,
                 "ip": self.args.target_ip,
                 "port": 502,
-                "unit_id": 3,
+                "unit_id": self.args.unit_id,
                 "function": 3,
                 "address": 30513,
                 "count": 4
@@ -149,6 +149,7 @@ if __name__ == '__main__':
     parser.add_argument("--secret-key", default="CHANGE_ME_SALT", help="Device Secret Key")
     parser.add_argument("--target-ip", required=True, help="IP address of the target device on local network")
     parser.add_argument("--command", choices=["sma_power", "sma_yield"], default="sma_power", help="Proxy command to execute")
+    parser.add_argument("--unit-id", type=int, default=3, help="Modbus Unit ID (default: 3)")
     parser.add_argument("--timeout", type=int, default=15, help="Response timeout in seconds")
 
     args = parser.parse_args()
