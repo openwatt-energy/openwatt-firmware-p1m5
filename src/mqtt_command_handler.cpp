@@ -33,7 +33,7 @@ void MQTTCommandHandler::handleMessage(const String& topic, const String& payloa
     return;
   }
 
-  if (!doc.containsKey("action")) {
+  if (!doc["action"].is<String>()) {
     DebugLogger::error(MODULE_PROXY, "Command missing action");
     return;
   }

@@ -126,6 +126,17 @@ class CLIClient:
                 },
                 "timeout_ms": 5000
             }
+        elif self.args.command == "tesla_wall_vitals":
+            payload = {
+                "action": "http_request",
+                "req_id": self.req_id,
+                "method": "GET",
+                "url": f"http://{self.args.target_ip}/api/1/vitals",
+                "headers": {
+                    "Accept": "application/json"
+                },
+                "timeout_ms": 5000
+            }
 
         print(f"Sending command '{self.args.command}' to {self.args.target_ip} via dongle {self.args.device_id}...")
         print(f"Topic: {topic_cmd}")
