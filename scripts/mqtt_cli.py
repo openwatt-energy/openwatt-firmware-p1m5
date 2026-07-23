@@ -47,7 +47,9 @@ class CLIClient:
 
         self.response_event = threading.Event()
         self.response_data = None
-        self.req_id = f"cli-{int(time.time())}"
+        self.commands_to_run = list(args.command)
+        self.current_command = None
+        self.req_id = None
 
     def run(self):
         print(f"Connecting to {self.args.broker}:{self.args.port} as {self.args.device_id}...")
@@ -59,21 +61,25 @@ class CLIClient:
 
         self.client.loop_start()
 
-        # Wait for the response event to be set by the on_message callback
-        if self.response_event.wait(self.args.timeout):
-            self.client.loop_stop()
-            self.client.disconnect()
-        else:
-            print(f"\nError: Timeout waiting for response after {self.args.timeout} seconds")
-            self.client.loop_stop()
-            self.client.disconnect()
-            sys.exit(1)
+        # Wait for all commands to complete
+        while self.commands_to_run:
+            self.response_event.clear()
+            self.current_command = self.commands_to_run.pop(0)
+            self.req_id = f"cli-{self.current_command}-{int(time.time())}"
+            self.send_command()
+
+            if not self.response_event.wait(self.args.timeout):
+                print(f"\nError: Timeout waiting for response to {self.current_command} after {self.args.timeout} seconds")
+                break
+
+        self.client.loop_stop()
+        self.client.disconnect()
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
             topic_resp = f"{self.args.prefix}/{self.args.device_id}/cmd_response"
             self.client.subscribe(topic_resp)
-            self.send_command()
+            # The run() loop handles sending commands now
         else:
             print(f"Connection failed with reason code: {reason_code}")
             sys.exit(1)
@@ -82,7 +88,7 @@ class CLIClient:
         topic_cmd = f"{self.args.prefix}/{self.args.device_id}/cmd"
         payload = {}
 
-        if self.args.command == "sma_power":
+        if self.current_command == "sma_power":
             payload = {
                 "action": "modbus_read",
                 "req_id": self.req_id,
@@ -93,7 +99,7 @@ class CLIClient:
                 "address": 30775,
                 "count": 2
             }
-        elif self.args.command == "sma_yield":
+        elif self.current_command == "sma_yield":
             payload = {
                 "action": "modbus_read",
                 "req_id": self.req_id,
@@ -104,7 +110,7 @@ class CLIClient:
                 "address": 30513,
                 "count": 4
             }
-        elif self.args.command == "tesla_soe":
+        elif self.current_command == "tesla_soe":
             payload = {
                 "action": "http_request",
                 "req_id": self.req_id,
@@ -115,7 +121,7 @@ class CLIClient:
                 },
                 "timeout_ms": 5000
             }
-        elif self.args.command == "tesla_meters":
+        elif self.current_command == "tesla_meters":
             payload = {
                 "action": "http_request",
                 "req_id": self.req_id,
@@ -126,7 +132,7 @@ class CLIClient:
                 },
                 "timeout_ms": 5000
             }
-        elif self.args.command == "tesla_wall_vitals":
+        elif self.current_command == "tesla_wall_vitals":
             payload = {
                 "action": "http_request",
                 "req_id": self.req_id,
@@ -137,8 +143,30 @@ class CLIClient:
                 },
                 "timeout_ms": 5000
             }
+        elif self.current_command == "tesla_wall_version":
+            payload = {
+                "action": "http_request",
+                "req_id": self.req_id,
+                "method": "GET",
+                "url": f"http://{self.args.target_ip}/api/1/version",
+                "headers": {
+                    "Accept": "application/json"
+                },
+                "timeout_ms": 5000
+            }
+        elif self.current_command == "tesla_wall_lifetime":
+            payload = {
+                "action": "http_request",
+                "req_id": self.req_id,
+                "method": "GET",
+                "url": f"http://{self.args.target_ip}/api/1/lifetime",
+                "headers": {
+                    "Accept": "application/json"
+                },
+                "timeout_ms": 5000
+            }
 
-        print(f"Sending command '{self.args.command}' to {self.args.target_ip} via dongle {self.args.device_id}...")
+        print(f"\nSending command '{self.current_command}' to {self.args.target_ip} via dongle {self.args.device_id}...")
         print(f"Topic: {topic_cmd}")
         self.client.publish(topic_cmd, json.dumps(payload))
 
@@ -154,14 +182,14 @@ class CLIClient:
                 # Check for successful modbus array
                 if "data" in data and not data.get("error"):
                     words = data["data"]
-                    if self.args.command == "sma_power":
+                    if self.current_command == "sma_power":
                         power = decode_s32(words)
                         if power is not None:
                             print(f"\n=> Decoded Active Power: {power} W")
                         else:
                             print("\n=> Decoded Active Power: Invalid/NaN")
 
-                    elif self.args.command == "sma_yield":
+                    elif self.current_command == "sma_yield":
                         yield_wh = decode_u64(words)
                         print(f"\n=> Decoded Total Yield: {yield_wh} Wh")
 
@@ -169,16 +197,37 @@ class CLIClient:
                     if data.get("status_code") == 200:
                         try:
                             body_json = json.loads(data.get("body", "{}"))
-                            if self.args.command == "tesla_soe":
+                            if self.current_command == "tesla_soe":
                                 soe = body_json.get("percentage")
                                 print(f"\n=> Decoded State of Energy: {soe}%")
-                            elif self.args.command == "tesla_wall_vitals":
+                            elif self.current_command == "tesla_meters":
+                                solar = body_json.get("solar", {}).get("instant_power", 0)
+                                site = body_json.get("site", {}).get("instant_power", 0)
+                                load = body_json.get("load", {}).get("instant_power", 0)
+                                battery = body_json.get("battery", {}).get("instant_power", 0)
+                                print(f"\n=> Solar Power: {solar} W")
+                                print(f"=> Grid Power: {site} W")
+                                print(f"=> Load Power: {load} W")
+                                print(f"=> Battery Power: {battery} W")
+                            elif self.current_command == "tesla_wall_vitals":
                                 grid_v = body_json.get("grid_v", 0)
                                 vehicle_current_a = body_json.get("vehicle_current_a", 0)
                                 state = body_json.get("evse_state", 0)
                                 print(f"\n=> Grid Voltage: {grid_v} V")
                                 print(f"=> Vehicle Current: {vehicle_current_a} A")
                                 print(f"=> EVSE State: {state}")
+                            elif self.current_command == "tesla_wall_version":
+                                version = body_json.get("firmware_version", "unknown")
+                                serial = body_json.get("serial_number", "unknown")
+                                print(f"\n=> Firmware Version: {version}")
+                                print(f"=> Serial Number: {serial}")
+                            elif self.current_command == "tesla_wall_lifetime":
+                                energy_wh = body_json.get("energy_wh", 0)
+                                starts = body_json.get("charge_starts", 0)
+                                uptime = body_json.get("uptime_s", 0)
+                                print(f"\n=> Total Energy Dispensed: {energy_wh / 1000.0:.2f} kWh")
+                                print(f"=> Total Charge Sessions: {starts}")
+                                print(f"=> Uptime: {uptime} seconds")
                         except Exception as e:
                             print(f"\n=> Failed to parse HTTP JSON body: {e}")
                             print(f"Raw body: {data.get('body')}")
@@ -201,7 +250,7 @@ if __name__ == '__main__':
     parser.add_argument("--device-id", required=True, help="Dongle Device ID (e.g. P1850D1C)")
     parser.add_argument("--secret-key", default="CHANGE_ME_SALT", help="Device Secret Key")
     parser.add_argument("--target-ip", required=True, help="IP address of the target device on local network")
-    parser.add_argument("--command", choices=["sma_power", "sma_yield", "tesla_soe", "tesla_meters", "tesla_wall_vitals"], default="sma_power", help="Proxy command to execute")
+    parser.add_argument("--command", choices=["sma_power", "sma_yield", "tesla_soe", "tesla_meters", "tesla_wall_vitals", "tesla_wall_version", "tesla_wall_lifetime"], nargs='+', default=["sma_power"], help="Proxy command(s) to execute")
     parser.add_argument("--unit-id", type=int, default=3, help="Modbus Unit ID (default: 3)")
     parser.add_argument("--timeout", type=int, default=15, help="Response timeout in seconds")
 
