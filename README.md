@@ -40,6 +40,12 @@ See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete guide covering:
 - Debugging & monitoring
 - Troubleshooting
 
+See **[MQTT_API.md](MQTT_API.md)** for complete documentation covering the bidirectional MQTT capabilities, including:
+- HTTP Proxy mapping
+- Modbus Proxy querying
+- Local Network Scanner
+- System Configuration Commands
+
 ## Configuration
 
 Edit `src/config.h`:
