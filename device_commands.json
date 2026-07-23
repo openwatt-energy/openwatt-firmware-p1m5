@@ -65,6 +65,65 @@
           }
         }
       }
+    },
+    "sma_sunnyboy_modbus": {
+      "description": "SMA Sunny Boy Inverter (Modbus TCP)",
+      "commands": {
+        "get_active_power": {
+          "description": "Get current active power production in Watts",
+          "protocol": "modbus",
+          "request": {
+            "port": 502,
+            "unit_id": 3,
+            "function": 3,
+            "address": 30775,
+            "count": 2
+          },
+          "response_mapping": {
+            "solar_power_w": {
+              "type": "S32",
+              "scale": 1,
+              "index": 0
+            }
+          }
+        },
+        "get_total_yield": {
+          "description": "Get total energy yield in Watt-hours",
+          "protocol": "modbus",
+          "request": {
+            "port": 502,
+            "unit_id": 3,
+            "function": 3,
+            "address": 30513,
+            "count": 4
+          },
+          "response_mapping": {
+            "total_yield_wh": {
+              "type": "U64",
+              "scale": 1,
+              "index": 0
+            }
+          }
+        },
+        "get_device_status": {
+          "description": "Get inverter operating status",
+          "protocol": "modbus",
+          "request": {
+            "port": 502,
+            "unit_id": 3,
+            "function": 3,
+            "address": 30201,
+            "count": 2
+          },
+          "response_mapping": {
+            "status_code": {
+              "type": "U32",
+              "scale": 1,
+              "index": 0
+            }
+          }
+        }
+      }
     }
   }
 }
