@@ -161,15 +161,13 @@ class CLIClient:
                             if self.args.command == "tesla_soe":
                                 soe = body_json.get("percentage")
                                 print(f"\n=> Decoded State of Energy: {soe}%")
-                            elif self.args.command == "tesla_meters":
-                                solar = body_json.get("solar", {}).get("instant_power", 0)
-                                site = body_json.get("site", {}).get("instant_power", 0)
-                                load = body_json.get("load", {}).get("instant_power", 0)
-                                battery = body_json.get("battery", {}).get("instant_power", 0)
-                                print(f"\n=> Solar Power: {solar} W")
-                                print(f"=> Grid Power: {site} W")
-                                print(f"=> Load Power: {load} W")
-                                print(f"=> Battery Power: {battery} W")
+                            elif self.args.command == "tesla_wall_vitals":
+                                grid_v = body_json.get("grid_v", 0)
+                                vehicle_current_a = body_json.get("vehicle_current_a", 0)
+                                state = body_json.get("evse_state", 0)
+                                print(f"\n=> Grid Voltage: {grid_v} V")
+                                print(f"=> Vehicle Current: {vehicle_current_a} A")
+                                print(f"=> EVSE State: {state}")
                         except Exception as e:
                             print(f"\n=> Failed to parse HTTP JSON body: {e}")
                             print(f"Raw body: {data.get('body')}")
@@ -192,7 +190,7 @@ if __name__ == '__main__':
     parser.add_argument("--device-id", required=True, help="Dongle Device ID (e.g. P1850D1C)")
     parser.add_argument("--secret-key", default="CHANGE_ME_SALT", help="Device Secret Key")
     parser.add_argument("--target-ip", required=True, help="IP address of the target device on local network")
-    parser.add_argument("--command", choices=["sma_power", "sma_yield", "tesla_soe", "tesla_meters"], default="sma_power", help="Proxy command to execute")
+    parser.add_argument("--command", choices=["sma_power", "sma_yield", "tesla_soe", "tesla_meters", "tesla_wall_vitals"], default="sma_power", help="Proxy command to execute")
     parser.add_argument("--unit-id", type=int, default=3, help="Modbus Unit ID (default: 3)")
     parser.add_argument("--timeout", type=int, default=15, help="Response timeout in seconds")
 
