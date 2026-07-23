@@ -1,0 +1,64 @@
+{
+  "fingerprints": [
+    {
+      "id": "tesla_powerwall_v1",
+      "brand": "Tesla",
+      "model": "Powerwall",
+      "device_type": "battery",
+      "trigger": {
+        "port": 80,
+        "protocol": "http"
+      },
+      "probe": {
+        "method": "GET",
+        "path": "/api/1/vitals",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "match": {
+        "status_code": 200,
+        "json_keys": ["pod_version", "system_u"]
+      }
+    },
+    {
+      "id": "homewizard_p1",
+      "brand": "HomeWizard",
+      "model": "Wi-Fi P1 Meter",
+      "device_type": "smart_meter",
+      "trigger": {
+        "port": 80,
+        "protocol": "http"
+      },
+      "probe": {
+        "method": "GET",
+        "path": "/api/v1/data",
+        "headers": {}
+      },
+      "match": {
+        "status_code": 200,
+        "json_keys": ["smr_version", "wifi_ssid"]
+      }
+    },
+    {
+      "id": "sma_sunnyboy_modbus",
+      "brand": "SMA",
+      "model": "Sunny Boy",
+      "device_type": "inverter",
+      "trigger": {
+        "port": 502,
+        "protocol": "modbus"
+      },
+      "probe": {
+        "unit_id": 3,
+        "function": 3,
+        "address": 30051,
+        "count": 2
+      },
+      "match": {
+        "not_error": true,
+        "expected_values": [8001]
+      }
+    }
+  ]
+}
