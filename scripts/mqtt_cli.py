@@ -104,6 +104,28 @@ class CLIClient:
                 "address": 30513,
                 "count": 4
             }
+        elif self.args.command == "tesla_soe":
+            payload = {
+                "action": "http_request",
+                "req_id": self.req_id,
+                "method": "GET",
+                "url": f"http://{self.args.target_ip}/api/system_status/soe",
+                "headers": {
+                    "Accept": "application/json"
+                },
+                "timeout_ms": 5000
+            }
+        elif self.args.command == "tesla_meters":
+            payload = {
+                "action": "http_request",
+                "req_id": self.req_id,
+                "method": "GET",
+                "url": f"http://{self.args.target_ip}/api/meters/aggregates",
+                "headers": {
+                    "Accept": "application/json"
+                },
+                "timeout_ms": 5000
+            }
 
         print(f"Sending command '{self.args.command}' to {self.args.target_ip} via dongle {self.args.device_id}...")
         print(f"Topic: {topic_cmd}")
@@ -132,6 +154,28 @@ class CLIClient:
                         yield_wh = decode_u64(words)
                         print(f"\n=> Decoded Total Yield: {yield_wh} Wh")
 
+                elif data.get("action") == "http_response":
+                    if data.get("status_code") == 200:
+                        try:
+                            body_json = json.loads(data.get("body", "{}"))
+                            if self.args.command == "tesla_soe":
+                                soe = body_json.get("percentage")
+                                print(f"\n=> Decoded State of Energy: {soe}%")
+                            elif self.args.command == "tesla_meters":
+                                solar = body_json.get("solar", {}).get("instant_power", 0)
+                                site = body_json.get("site", {}).get("instant_power", 0)
+                                load = body_json.get("load", {}).get("instant_power", 0)
+                                battery = body_json.get("battery", {}).get("instant_power", 0)
+                                print(f"\n=> Solar Power: {solar} W")
+                                print(f"=> Grid Power: {site} W")
+                                print(f"=> Load Power: {load} W")
+                                print(f"=> Battery Power: {battery} W")
+                        except Exception as e:
+                            print(f"\n=> Failed to parse HTTP JSON body: {e}")
+                            print(f"Raw body: {data.get('body')}")
+                    else:
+                        print(f"\n=> HTTP Error: Status Code {data.get('status_code')}")
+
                 elif data.get("error"):
                     print(f"\n=> Error: {data.get('error')} (Modbus Exception Code: {data.get('exception_code', 'N/A')})")
 
@@ -148,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument("--device-id", required=True, help="Dongle Device ID (e.g. P1850D1C)")
     parser.add_argument("--secret-key", default="CHANGE_ME_SALT", help="Device Secret Key")
     parser.add_argument("--target-ip", required=True, help="IP address of the target device on local network")
-    parser.add_argument("--command", choices=["sma_power", "sma_yield"], default="sma_power", help="Proxy command to execute")
+    parser.add_argument("--command", choices=["sma_power", "sma_yield", "tesla_soe", "tesla_meters"], default="sma_power", help="Proxy command to execute")
     parser.add_argument("--unit-id", type=int, default=3, help="Modbus Unit ID (default: 3)")
     parser.add_argument("--timeout", type=int, default=15, help="Response timeout in seconds")
 
