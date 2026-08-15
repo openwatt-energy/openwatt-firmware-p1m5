@@ -27,10 +27,21 @@
   #define CUSTOMER_DISPLAY_NAME "OpenWatt"
   #define CUSTOMER_FINGERPRINT_DEFAULT ""
   #define AP_SSID_PREFIX "OpenWatt"
-  #define SALT_STRING "CHANGE_ME_SALT"
+  // Per-deployment secret: derives the WiFi AP password (MD5(deviceId + SALT))
+  // and the MQTT broker password (base64(SALT + deviceId)).
+  // Set it at build time via platformio.ini build_flags, e.g.:
+  //   -DSALT_STRING='"your-salt-here"'
+  // or via a generated customer_config.h (see src/customer_config.py).
+  // Never commit a real salt.
+  #ifndef SALT_STRING
+    #define SALT_STRING "CHANGE_ME_SALT"
+  #endif
 
-  // MQTT Configuration for mqtt.example.com
-  #define MQTT_BROKER_HOST "mqtt.example.com"
+  // MQTT broker host (TLS). Override at build time, e.g.:
+  //   -DMQTT_BROKER_HOST='"broker.example.com"'
+  #ifndef MQTT_BROKER_HOST
+    #define MQTT_BROKER_HOST "mqtt.example.com"
+  #endif
   #define MQTT_BROKER_PORT 8883  // TLS port
   #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
   #define MQTT_DEFAULT_TOPIC "P1M5/"

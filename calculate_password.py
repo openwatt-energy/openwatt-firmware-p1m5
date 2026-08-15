@@ -1,33 +1,44 @@
 #!/usr/bin/env python3
 """
-Calculate WiFi AP password for OpenWatt P1 Reader
+Calculate WiFi AP password for OpenWatt P1 Reader.
+
 Password = MD5(DeviceID + SALT)
+
+The SALT must match the value compiled into the firmware (see src/config.h).
+Provide it via the --salt argument or the OPENWATT_SALT environment variable.
 """
 
+import argparse
 import hashlib
+import os
 import sys
 
-SALT = "CHANGE_ME_SALT"
 
-def calculate_password(device_id):
-    """Calculate WiFi AP password from device ID"""
-    combined = device_id + SALT
-    md5_hash = hashlib.md5(combined.encode()).hexdigest()
-    return md5_hash
+def calculate_password(device_id, salt):
+    """Calculate WiFi AP password from device ID and salt."""
+    return hashlib.md5((device_id + salt).encode()).hexdigest()
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        device_id = sys.argv[1]
-    else:
-        print("Usage: python3 calculate_password.py <DeviceID>")
-        print("Example: python3 calculate_password.py P1A1B2C3")
-        print("\nTo find DeviceID:")
-        print("  - Check serial output when device boots")
-        print("  - DeviceID format: P1XXXXXX (last 6 hex chars of MAC)")
+
+def main():
+    parser = argparse.ArgumentParser(description='Calculate WiFi AP password')
+    parser.add_argument('device_id', help='DeviceID (e.g. P1A1B2C3)')
+    parser.add_argument(
+        '--salt',
+        default=os.environ.get('OPENWATT_SALT', ''),
+        help='SALT (default: $OPENWATT_SALT env var)',
+    )
+    args = parser.parse_args()
+
+    if not args.salt:
+        print('Error: no SALT provided. Use --salt or set OPENWATT_SALT.', file=sys.stderr)
         sys.exit(1)
-    
-    password = calculate_password(device_id)
-    print(f"Device ID: {device_id}")
-    print(f"WiFi AP Password: {password}")
-    print(f"\nSSID will be: OpenWatt-{device_id[2:]}")  # Remove "P1" prefix
 
+    password = calculate_password(args.device_id, args.salt)
+    print(f'Device ID: {args.device_id}')
+    print(f'WiFi AP Password: {password}')
+    # SSID strips the "P1" prefix from the DeviceID
+    print(f'\nSSID will be: OpenWatt-{args.device_id[2:]}')
+
+
+if __name__ == '__main__':
+    main()

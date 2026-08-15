@@ -29,7 +29,7 @@ pio run
 
 ## Full Documentation
 
-See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete guide covering:
+See **[DEV.md](DEV.md)** for complete guide covering:
 
 - Web UI testing (local simulator)
 - Unit testing (PlatformIO)
@@ -48,32 +48,21 @@ See **[MQTT_API.md](MQTT_API.md)** for complete documentation covering the bidir
 
 ## Configuration
 
-Edit `src/config.h`:
-
-```cpp
-#define FIRMWARE_VERSION "v1.0.45"
-#define ENABLE_P1_READER 1    // P1 meter reading
-#define ENABLE_MQTT 1         // MQTT client
-#define ENABLE_OTA 1          // OTA updates
-```
+Feature flags are set in `src/config.h`. Secrets (the SALT and MQTT broker host)
+are injected at build time — see **[SECURITY.md](SECURITY.md)**.
 
 WiFi/MQTT settings via Web UI at `http://<device-ip>/settings`
 
 ## Project Structure
 
 ```
-firmwares/p1m5/
 ├── src/              # Source code
 ├── data/             # Web UI files
 ├── test/             # Unit tests & P1 simulator
 ├── web_simulator/    # Local web UI testing
-└── DEVELOPMENT.md    # Full documentation
+└── DEV.md            # Development documentation
 ```
 
-## Reference Docs
+## License
 
-For DSMR spec, UART layout, and API shape, see `firmware/` at repo root:
-
-- `firmware/IMPLEMENTATION_SPEC.md` - UART, OBIS codes, telegram format, CRC16, API shapes
-- `firmware/P1_PARSER_FINDINGS.md` - P1 parsing checklist
-- `firmware/README.md` - Partition layout, memory segments
+Apache License 2.0 — see [LICENSE](LICENSE).
