@@ -1,0 +1,21 @@
+services:
+  build:
+    build: .
+    image: openwatt-firmware-p1m5
+    volumes:
+      - .:/workspace
+      - platformio-cache:/root/.platformio
+    command: pio run
+
+  shell:
+    build: .
+    image: openwatt-firmware-p1m5
+    volumes:
+      - .:/workspace
+      - platformio-cache:/root/.platformio
+    entrypoint: /bin/bash
+    stdin_open: true
+    tty: true
+
+volumes:
+  platformio-cache:

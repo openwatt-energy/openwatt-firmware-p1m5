@@ -27,6 +27,28 @@ pio run
 ./build-and-flash.sh
 ```
 
+## Build with Docker
+
+No local PlatformIO/toolchain needed:
+
+```bash
+docker compose run --rm build    # build firmware
+docker compose run --rm shell    # interactive shell in the build env
+```
+
+Note: the unit tests (`pio test -e test`) run on real hardware, so they
+require a connected ESP32 and are not run in Docker/CI.
+
+Built binaries land in `.pio/build/<env>/` on the host.
+
+## User Documentation
+
+See **[docs/](docs/)** for user-facing guides:
+
+- [User Manual](docs/USER_MANUAL.md) — what it does and how to install it
+- [LED Indicator](docs/LED_INDICATOR.md) — LED colour/blink meanings
+- [Hardware](docs/HARDWARE.md) — pinout, meter connection, buttons & reset
+
 ## Full Documentation
 
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete guide covering:
