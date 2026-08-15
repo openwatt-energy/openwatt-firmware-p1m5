@@ -117,7 +117,7 @@ void MQTTClient::subscribeToTopics() {
 }
 
 void MQTTClient::reconnect() {
-  if (!client || !config.host.length() > 0) {
+  if (!client || config.host.length() == 0) {
     return;
   }
 

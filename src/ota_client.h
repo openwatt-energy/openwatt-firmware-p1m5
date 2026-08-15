@@ -48,6 +48,7 @@ public:
 
 private:
   static String firmwareURL;
+  static bool downloadAndApplyImpl(const String& url, const String* deviceSerial, const String* currentVersion, const String* macAddress);
   static void setUpdateHeaders(class HTTPClient& client, const String& deviceSerial, const String& currentVersion, const String& macAddress);
   static String getMacAddressString();
 };

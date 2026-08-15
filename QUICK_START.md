@@ -58,7 +58,7 @@ python test/simulator/p1_simulator.py --port /dev/ttyUSB1 --interval 5
 
 ### Option B: Use Real P1 Meter
 
-1. Connect P1 meter to ESP32 Serial2 (GPIO 16/17)
+1. Connect P1 meter to ESP32 Serial1 (GPIO 21/22)
 2. Enable P1 reader in `src/config.h`:
    ```cpp
    #define ENABLE_P1_READER 1
@@ -127,7 +127,7 @@ python test/simulator/p1_simulator.py --port /dev/ttyUSB1 --interval 5
 
 ### P1 Reader Not Working
 - Check `ENABLE_P1_READER` is set to `1`
-- Verify Serial2 pins (16/17) are correct
+- Verify Serial1 pins (21/22) are correct
 - Check baud rate matches meter (usually 115200)
 
 ### MQTT Connection Fails

@@ -6,7 +6,7 @@ Built with **PlatformIO + Arduino** (ESP32), not ESPHome.
 
 ## Features
 
-- **P1**: Serial2 GPIO 16/17, 115200 8N1, DSMR telegram parsing
+- **P1**: Serial1 GPIO 21/22, 115200 8N1, DSMR telegram parsing
 - **Web**: Async HTTP server, WebSocket live stream, REST API
 - **MQTT**: Optional TLS publish to `mqtt.example.com`
 - **OTA**: Optional over-the-air updates
