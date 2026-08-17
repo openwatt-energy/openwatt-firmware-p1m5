@@ -48,3 +48,10 @@ controls are:
 
 Powered over **USB-C** (5 V). No external power supply is required beyond a
 standard USB-C adapter.
+
+## History & attribution
+
+The dongle hardware was originally developed by **Re.alto**, a subsidiary of
+Belgian grid operator **Elia** (since closed). The design is pin-compatible
+with, and inspired by, the open-source
+[plan-d-io P1-dongle](https://github.com/plan-d-io/P1-dongle) project.

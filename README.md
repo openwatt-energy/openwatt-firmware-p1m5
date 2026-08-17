@@ -93,3 +93,16 @@ For DSMR spec, UART layout, and API shape, see `firmware/` at repo root:
 - `firmware/IMPLEMENTATION_SPEC.md` - UART, OBIS codes, telegram format, CRC16, API shapes
 - `firmware/P1_PARSER_FINDINGS.md` - P1 parsing checklist
 - `firmware/README.md` - Partition layout, memory segments
+
+## Credits
+
+The P1M5 dongle hardware was originally developed by **Re.alto** (an Elia
+subsidiary, since closed). The project draws inspiration from the open-source
+[plan-d-io P1-dongle](https://github.com/plan-d-io/P1-dongle) project.
+
+## License
+
+This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)** —
+see [LICENSE](LICENSE).
+
+Copyright © 2026 OpenWatt srl.
