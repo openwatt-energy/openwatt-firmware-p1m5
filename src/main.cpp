@@ -390,6 +390,7 @@ void publishMQTTStatus() {
 
   // WiFi config
   doc["wifi_ssid"] = WiFiManager::getConnectedSSID();
+  doc["wifi_rssi"] = WiFi.RSSI();  // dBm, negative (e.g. -55); enables remote link-quality assessment
 
   String jsonString;
   serializeJson(doc, jsonString);
