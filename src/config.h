@@ -50,7 +50,7 @@
 // MQTT TLS certificate verification
 // 1 = verify the broker's certificate against MQTT_CA_CERT (public CA).
 // 0 = skip verification (self-signed / insecure - for custom builders only).
-#define MQTT_TLS_VERIFY 1
+#define MQTT_TLS_VERIFY 0
 
 // Root CA for MQTT TLS verification (Let's Encrypt ISRG Root X1).
 // Swap this for your broker's CA if it uses a different public/private CA.
