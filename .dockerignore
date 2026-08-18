@@ -1,0 +1,5 @@
+.git
+.pio
+node_modules
+*.bin
+docs/images/*.png

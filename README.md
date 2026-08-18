@@ -6,7 +6,7 @@ Built with **PlatformIO + Arduino** (ESP32), not ESPHome.
 
 ## Features
 
-- **P1**: Serial2 GPIO 16/17, 115200 8N1, DSMR telegram parsing
+- **P1**: Serial1 GPIO 21/22, 115200 8N1, DSMR telegram parsing
 - **Web**: Async HTTP server, WebSocket live stream, REST API
 - **MQTT**: Optional TLS publish to `mqtt.example.com`
 - **OTA**: Optional over-the-air updates
@@ -26,6 +26,28 @@ pio run
 # Flash to device
 ./build-and-flash.sh
 ```
+
+## Build with Docker
+
+No local PlatformIO/toolchain needed:
+
+```bash
+docker compose run --rm build    # build firmware
+docker compose run --rm shell    # interactive shell in the build env
+```
+
+Note: the unit tests (`pio test -e test`) run on real hardware, so they
+require a connected ESP32 and are not run in Docker/CI.
+
+Built binaries land in `.pio/build/<env>/` on the host.
+
+## User Documentation
+
+See **[docs/](docs/)** for user-facing guides:
+
+- [User Manual](docs/USER_MANUAL.md) — what it does and how to install it
+- [LED Indicator](docs/LED_INDICATOR.md) — LED colour/blink meanings
+- [Hardware](docs/HARDWARE.md) — pinout, meter connection, buttons & reset
 
 ## Full Documentation
 
@@ -71,3 +93,16 @@ For DSMR spec, UART layout, and API shape, see `firmware/` at repo root:
 - `firmware/IMPLEMENTATION_SPEC.md` - UART, OBIS codes, telegram format, CRC16, API shapes
 - `firmware/P1_PARSER_FINDINGS.md` - P1 parsing checklist
 - `firmware/README.md` - Partition layout, memory segments
+
+## Credits
+
+The P1M5 dongle hardware was originally developed by **Re.alto** (an Elia
+subsidiary, since closed). The project draws inspiration from the open-source
+[plan-d-io P1-dongle](https://github.com/plan-d-io/P1-dongle) project.
+
+## License
+
+This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)** —
+see [LICENSE](LICENSE).
+
+Copyright © 2026 OpenWatt srl.

@@ -4,7 +4,7 @@ Work in this order so you only change one thing at a time.
 
 ## 1. Stable boot (current)
 
-- **P1 is OFF** (`ENABLE_P1_READER 0` in `src/config.h`) so the board does not touch Serial2 and cannot WDT.
+- **P1 is OFF** (`ENABLE_P1_READER 0` in `src/config.h`) so the board does not touch Serial1 and cannot WDT.
 - Build, flash, open serial @ 115200. You should see:
   - `*** Starting OpenWatt application ***`
   - `Web UI: http://192.168.4.1`
@@ -28,16 +28,16 @@ If it resets, the image is wrong or something else is wrong; fix that before ste
   - `python3 -m platformio run -e m5stack-core-esp32`
   - `./build-and-flash.sh` (or your usual flash command)
 - Serial should show:
-  - `Creating P1 reader task (Serial2 init deferred)...`
-  - `[P1 Task] Starting (waiting for Serial2 init from main loop)...`
-  - After ~5 s: `[P1] Serial2 init from main loop...` → `[P1] Serial2 ready.` → `P1 reader task started`
+  - `Creating P1 reader task (Serial1 init deferred)...`
+  - `[P1 Task] Starting (waiting for Serial1 init from main loop)...`
+  - After ~5 s: `[P1] Serial1 init from main loop...` → `[P1] Serial1 ready.` → `P1 reader task started`
   - No WDT reset.
 
-If it WDTs again, the next move is to init Serial2 without `setRxBufferSize` (use default RX buffer) or to read P1 in `loop()` only (no task).
+If it WDTs again, the next move is to init Serial1 without `setRxBufferSize` (use default RX buffer) or to read P1 in `loop()` only (no task).
 
 ## 4. Meter test
 
-- Connect smart meter P1 to GPIO 16/17 (RX/TX).
+- Connect smart meter P1 to GPIO 21/22 (RX/TX).
 - Check `/api/meter` and WebSocket `/api/live` for data when the meter sends telegrams.
 
 ---

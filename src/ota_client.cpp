@@ -81,122 +81,14 @@ OTAInfo OTAClient::checkForUpdate(const String& deviceSerial, const String& curr
 }
 
 bool OTAClient::downloadAndApply(const String& deviceSerial, const String& currentVersion, const String& macAddress) {
-  if (WiFi.status() != WL_CONNECTED) {
-    LOG_ERROR(MODULE_OTA, "WiFi not connected, cannot download update");
-    return false;
-  }
-
-  HTTPClient http;
-  http.begin(firmwareURL);
-  http.setTimeout(OTA_TIMEOUT_MS);
-  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);  // Follow 301/302/307 redirects
-
-  setUpdateHeaders(http, deviceSerial, currentVersion, macAddress);
-
-  LOG_INFO(MODULE_OTA, "Downloading firmware update...");
-
-  int httpCode = http.GET();
-
-  if (httpCode != 200) {
-    LOG_ERROR(MODULE_OTA, "Failed to download firmware, HTTP code: %d", httpCode);
-    http.end();
-    return false;
-  }
-
-  // Get firmware info from headers
-  String firmwareName = http.header("Xenn-Firmware-Name");
-  String firmwareTag = http.header("Xenn-Firmware-Tag");
-  String firmwareDate = http.header("Xenn-Firmware-Date");
-
-  LOG_INFO(MODULE_OTA, "Firmware info:");
-  LOG_INFO(MODULE_OTA, "  Name: %s", firmwareName.c_str());
-  LOG_INFO(MODULE_OTA, "  Tag: %s", firmwareTag.c_str());
-  LOG_INFO(MODULE_OTA, "  Date: %s", firmwareDate.c_str());
-
-  // Get content length
-  int contentLength = http.getSize();
-  if (contentLength <= 0) {
-    LOG_ERROR(MODULE_OTA, "Invalid content length: %d", contentLength);
-    http.end();
-    return false;
-  }
-
-  LOG_INFO(MODULE_OTA, "Content length: %d bytes", contentLength);
-
-  // Check if we have enough space
-  if (contentLength > UPDATE_SIZE_UNKNOWN && contentLength > (ESP.getFreeSketchSpace() - 0x1000)) {
-    LOG_ERROR(MODULE_OTA, "Not enough space for update. Required: %d, Available: %d",
-              contentLength, ESP.getFreeSketchSpace());
-    http.end();
-    return false;
-  }
-
-  // Begin OTA update with known size for proper verification
-  size_t updateSize = (contentLength > 0) ? contentLength : UPDATE_SIZE_UNKNOWN;
-  if (!Update.begin(updateSize)) {
-    LOG_ERROR(MODULE_OTA, "Update.begin() failed: %s", Update.errorString());
-    http.end();
-    return false;
-  }
-
-  LOG_INFO(MODULE_OTA, "Starting firmware update...");
-
-  // Stream download
-  WiFiClient* stream = http.getStreamPtr();
-  size_t written = 0;
-  uint8_t buffer[1024];
-
-  while (http.connected() && (written < contentLength || contentLength == -1)) {
-    size_t available = stream->available();
-    if (available) {
-      int c = stream->readBytes(buffer, min(available, sizeof(buffer)));
-      Update.write(buffer, c);
-      written += c;
-
-      // Log progress every 10%
-      if (contentLength > 0) {
-        int percent = (written * 100) / contentLength;
-        static int lastPercent = -1;
-        if (percent >= lastPercent + 10) {
-          LOG_INFO(MODULE_OTA, "Progress: %d%% (%d/%d bytes)", percent, written, contentLength);
-          lastPercent = percent;
-        }
-      }
-    } else {
-      delay(1);
-    }
-  }
-
-  http.end();
-
-  if (written == 0) {
-    LOG_ERROR(MODULE_OTA, "No data received");
-    Update.abort();
-    return false;
-  }
-
-  LOG_INFO(MODULE_OTA, "Downloaded %d bytes", written);
-
-  // Finish update
-  if (!Update.end()) {
-    LOG_ERROR(MODULE_OTA, "Update.end() failed: %s", Update.errorString());
-    return false;
-  }
-
-  if (!Update.isFinished()) {
-    LOG_ERROR(MODULE_OTA, "Update not finished");
-    Update.abort();
-    return false;
-  }
-
-  LOG_INFO(MODULE_OTA, "Firmware update successful! Rebooting...");
-  delay(1000);
-  ESP.restart();
-
-  return true;
+  return downloadAndApplyImpl(firmwareURL, &deviceSerial, &currentVersion, &macAddress);
 }
 
 bool OTAClient::downloadAndApplyFromURL(const String& url) {
+  return downloadAndApplyImpl(url, nullptr, nullptr, nullptr);
+}
+
+bool OTAClient::downloadAndApplyImpl(const String& url, const String* deviceSerial, const String* currentVersion, const String* macAddress) {
   if (WiFi.status() != WL_CONNECTED) {
     LOG_ERROR(MODULE_OTA, "WiFi not connected, cannot download update");
     return false;
@@ -211,6 +103,10 @@ bool OTAClient::downloadAndApplyFromURL(const String& url) {
   http.setTimeout(OTA_TIMEOUT_MS);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);  // Follow 301/302/307 redirects
 
+  if (deviceSerial && currentVersion && macAddress) {
+    setUpdateHeaders(http, *deviceSerial, *currentVersion, *macAddress);
+  }
+
   LOG_INFO(MODULE_OTA, "Downloading from %s", url.c_str());
 
   int httpCode = http.GET();
@@ -221,12 +117,24 @@ bool OTAClient::downloadAndApplyFromURL(const String& url) {
     return false;
   }
 
+  if (deviceSerial) {
+    String firmwareName = http.header("Xenn-Firmware-Name");
+    String firmwareTag = http.header("Xenn-Firmware-Tag");
+    String firmwareDate = http.header("Xenn-Firmware-Date");
+
+    LOG_INFO(MODULE_OTA, "Firmware info:");
+    LOG_INFO(MODULE_OTA, "  Name: %s", firmwareName.c_str());
+    LOG_INFO(MODULE_OTA, "  Tag: %s", firmwareTag.c_str());
+    LOG_INFO(MODULE_OTA, "  Date: %s", firmwareDate.c_str());
+  }
+
   int contentLength = http.getSize();
   if (contentLength <= 0) {
     LOG_ERROR(MODULE_OTA, "Invalid content length: %d", contentLength);
     http.end();
     return false;
   }
+
   LOG_INFO(MODULE_OTA, "Content length: %d bytes", contentLength);
 
   if (contentLength > UPDATE_SIZE_UNKNOWN && contentLength > (ESP.getFreeSketchSpace() - 0x1000)) {
@@ -246,6 +154,7 @@ bool OTAClient::downloadAndApplyFromURL(const String& url) {
   WiFiClient* stream = http.getStreamPtr();
   size_t written = 0;
   uint8_t buffer[1024];
+  int lastPercent = -1;
 
   while (http.connected() && (written < contentLength || contentLength == -1)) {
     size_t available = stream->available();
@@ -255,7 +164,6 @@ bool OTAClient::downloadAndApplyFromURL(const String& url) {
       written += c;
       if (contentLength > 0) {
         int percent = (written * 100) / contentLength;
-        static int lastPercent = -1;
         if (percent >= lastPercent + 10) {
           LOG_INFO(MODULE_OTA, "Progress: %d%% (%d/%d bytes)", percent, written, contentLength);
           lastPercent = percent;

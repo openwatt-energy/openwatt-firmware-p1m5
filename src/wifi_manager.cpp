@@ -19,6 +19,19 @@ static int connectAttempts = 0;
 static unsigned long connectStartTime = 0;
 static unsigned long apEnabledStartTime = 0;
 
+static String startSoftAP() {
+  uint8_t mac[6];
+  esp_efuse_mac_get_default(mac);
+  char apName[32];
+  sprintf(apName, "%s-P1%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
+  WiFi.softAP(apName, NULL);  // Open AP
+  IPAddress localIP(192, 168, 4, 1);
+  IPAddress gateway(192, 168, 4, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  WiFi.softAPConfig(localIP, gateway, subnet);
+  return String(apName);
+}
+
 void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
   SerialConsole::println("Starting WiFi...");
 
@@ -30,26 +43,13 @@ void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
   // Load saved credentials
   WiFiConfig config = loadCredentials(prefs);
 
-  // Set AP SSID with format: SolisEco-P1XXXXXX
-  uint8_t mac[6];
-  esp_efuse_mac_get_default(mac);
-  char apName[32];
-  sprintf(apName, "%s-P1%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
-  String apSSID = String(apName);
-
   // Check if we have credentials
   if (config.ssid.length() > 0) {
     // Start in AP+STA mode, try to connect
     SerialConsole::println("Starting AP+STA mode...");
-    SerialConsole::println("  AP SSID: " + apSSID);
     WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP(apSSID.c_str(), NULL);  // Open AP
-
-    // Set static IP for AP
-    IPAddress localIP(192, 168, 4, 1);
-    IPAddress gateway(192, 168, 4, 1);
-    IPAddress subnet(255, 255, 255, 0);
-    WiFi.softAPConfig(localIP, gateway, subnet);
+    String apSSID = startSoftAP();
+    SerialConsole::println("  AP SSID: " + apSSID);
 
     SerialConsole::println("AP mode started");
     SerialConsole::println("  AP IP: " + WiFi.softAPIP().toString());
@@ -64,13 +64,7 @@ void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
     // No credentials - AP only
     SerialConsole::println("No saved WiFi credentials, starting AP only...");
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(apSSID.c_str(), NULL);  // Open AP
-
-    // Set static IP for AP
-    IPAddress localIP(192, 168, 4, 1);
-    IPAddress gateway(192, 168, 4, 1);
-    IPAddress subnet(255, 255, 255, 0);
-    WiFi.softAPConfig(localIP, gateway, subnet);
+    startSoftAP();
 
     SerialConsole::println("AP mode started");
     SerialConsole::println("  AP IP: " + WiFi.softAPIP().toString());
@@ -298,18 +292,7 @@ void WiFiManager::checkStatus(Preferences& prefs) {
         WiFi.disconnect();
         delay(100);
         WiFi.mode(WIFI_AP_STA);
-
-        // Get AP SSID
-        uint8_t mac[6];
-        esp_efuse_mac_get_default(mac);
-        char apName[32];
-        sprintf(apName, "%s-P1%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
-        WiFi.softAP(apName, NULL);
-
-        IPAddress localIP(192, 168, 4, 1);
-        IPAddress gateway(192, 168, 4, 1);
-        IPAddress subnet(255, 255, 255, 0);
-        WiFi.softAPConfig(localIP, gateway, subnet);
+        startSoftAP();
 
         SerialConsole::println("AP fallback enabled: " + WiFi.softAPIP().toString());
         apEnabled = true;
@@ -335,18 +318,8 @@ void WiFiManager::checkStatus(Preferences& prefs) {
 
 // Enable AP mode (for when user needs to reconfigure)
 void WiFiManager::enableAP() {
-  uint8_t mac[6];
-  esp_efuse_mac_get_default(mac);
-  char apName[32];
-  sprintf(apName, "%s-P1%02X%02X%02X", AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
-
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(apName, NULL);
-
-  IPAddress localIP(192, 168, 4, 1);
-  IPAddress gateway(192, 168, 4, 1);
-  IPAddress subnet(255, 255, 255, 0);
-  WiFi.softAPConfig(localIP, gateway, subnet);
+  startSoftAP();
 
   SerialConsole::println("AP mode enabled: " + WiFi.softAPIP().toString());
   apEnabled = true;

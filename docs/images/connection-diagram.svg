@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 300" width="940" height="300" font-family="Inter, -apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <!-- Smart meter -->
+  <rect x="20" y="80" width="200" height="140" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+  <text x="120" y="120" text-anchor="middle" font-size="16" font-weight="700" fill="#1e1b4b">Smart Meter</text>
+  <text x="120" y="145" text-anchor="middle" font-size="12" fill="#475569">DSMR P1</text>
+  <rect x="205" y="130" width="16" height="40" rx="2" fill="#fbbf24" stroke="#b45309" stroke-width="1"/>
+  <text x="120" y="200" text-anchor="middle" font-size="11" fill="#64748b">P1 port (RJ11)</text>
+
+  <!-- P1 cable -->
+  <line x1="221" y1="150" x2="319" y2="150" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="138" text-anchor="middle" font-size="11" fill="#64748b">P1 cable (RJ11)</text>
+  <text x="270" y="172" text-anchor="middle" font-size="10" fill="#94a3b8">115200 baud · RX GPIO 21</text>
+
+  <!-- Dongle -->
+  <rect x="330" y="80" width="220" height="140" rx="10" fill="#fefce8" stroke="#ca8a04" stroke-width="2"/>
+  <text x="440" y="120" text-anchor="middle" font-size="16" font-weight="700" fill="#422006">OpenWatt P1 Dongle</text>
+  <text x="440" y="145" text-anchor="middle" font-size="12" fill="#475569">M5Stack Atom · ESP32</text>
+  <!-- LED dot -->
+  <circle cx="440" cy="175" r="8" fill="#22c55e" stroke="#15803d" stroke-width="1.5"/>
+  <text x="458" y="179" font-size="11" fill="#475569">RGB LED (GPIO 27)</text>
+  <text x="440" y="205" text-anchor="middle" font-size="11" fill="#64748b">USB-C powered</text>
+
+  <!-- WiFi -->
+  <line x1="550" y1="150" x2="648" y2="150" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="599" y="138" text-anchor="middle" font-size="11" fill="#64748b">WiFi</text>
+
+  <!-- Cloud -->
+  <rect x="660" y="80" width="200" height="140" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="760" y="120" text-anchor="middle" font-size="16" font-weight="700" fill="#064e3b">OpenWatt Cloud</text>
+  <text x="760" y="145" text-anchor="middle" font-size="12" fill="#475569">MQTT (TLS, port 8883)</text>
+  <text x="760" y="175" text-anchor="middle" font-size="11" fill="#64748b">www.openwatt.be</text>
+
+  <!-- Power annotation -->
+  <line x1="440" y1="220" x2="440" y2="245" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="440" y="262" text-anchor="middle" font-size="11" fill="#64748b">USB-C 5V</text>
+</svg>
