@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """
-Customer Config Generator
+Customer config generator.
 
-Converts customer JSON config to C header file for compile-time inclusion.
+Converts a customer JSON config to a C header for compile-time inclusion.
 
-Usage:
-    python3 customer_config.py src/customers/soliseco.json
+Two ways to run:
 
-Output:
-    src/customer_config.h (generated, gitignored)
+1. Standalone CLI:
+       python3 customer_config.py src/customers/soliseco.json
+   Output: src/customer_config.h (gitignored)
+
+2. As a PlatformIO extra_script (wired in platformio.ini): the customer is
+   derived from the build environment name (PIOENV) and the header is
+   generated automatically before compilation.
 """
 
 import json
-import sys
 import re
+import sys
 from pathlib import Path
 
 
@@ -31,18 +35,15 @@ def json_to_c_value(value, value_type=None):
     elif isinstance(value, float):
         return str(value)
     elif isinstance(value, str):
-        # Escape special characters for C string
         escaped = value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
         return f'"{escaped}"'
-    elif isinstance(value, dict):
-        return None  # Handle separately
-    elif isinstance(value, list):
-        return None  # Handle separately
     return None
 
 
 def generate_header(config, customer_name):
     """Generate C header from customer config."""
+
+    version_suffix = config.get("version_suffix", customer_name)
 
     lines = [
         "/* Auto-generated file - DO NOT EDIT */",
@@ -85,42 +86,52 @@ def generate_header(config, customer_name):
         f'#define THEME_ACCENT "{theme.get("accent", "#2563eb")}"',
         "",
         "// Firmware version suffix",
-        f'#define FIRMWARE_VERSION_SUFFIX "-{customer_name}"',
+        f'#define FIRMWARE_VERSION_SUFFIX "-{version_suffix}"',
     ])
 
     return '\n'.join(lines)
+
+
+def generate_from_json(config_path):
+    """Load a customer JSON and write src/customer_config.h."""
+    config_path = Path(config_path)
+    if not config_path.exists():
+        print(f"Error: Config file not found: {config_path}")
+        return False
+
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    customer_name = config.get('customer', 'unknown')
+    header_content = generate_header(config, customer_name)
+
+    output_path = config_path.parent.parent / 'customer_config.h'
+    with open(output_path, 'w') as f:
+        f.write(header_content)
+
+    print(f"Generated: {output_path}")
+    print(f"Customer: {config.get('display_name')} ({customer_name})")
+    return True
 
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: python3 customer_config.py <config.json>")
         sys.exit(1)
-
-    config_path = Path(sys.argv[1])
-    if not config_path.exists():
-        print(f"Error: Config file not found: {config_path}")
-        sys.exit(1)
-
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-
-    customer_name = config.get('customer', 'unknown')
-
-    # Generate header content
-    header_content = generate_header(config, customer_name)
-
-    # Write to customer_config.h (in same directory as config)
-    output_path = config_path.parent.parent / 'customer_config.h'
-
-    with open(output_path, 'w') as f:
-        f.write(header_content)
-
-    print(f"Generated: {output_path}")
-    print(f"Customer: {config.get('display_name')} ({customer_name})")
-    print(f"Fingerprint: {config.get('fingerprint_default')}")
-    print(f"MQTT: {config.get('mqtt', {}).get('broker_host')}")
-    print(f"Theme: {config.get('theme', {}).get('primary')}")
+    generate_from_json(sys.argv[1])
 
 
-if __name__ == '__main__':
+# PlatformIO extra_script mode: derive the customer from the build env name.
+try:
+    Import("env")
+    pio_env = env.get("PIOENV", "")
+    if pio_env and pio_env != "test":
+        project_dir = Path(env.get("PROJECT_DIR", "."))
+        config_path = project_dir / "src" / "customers" / f"{pio_env}.json"
+        if config_path.exists():
+            generate_from_json(config_path)
+except Exception:
+    pass
+
+if __name__ == "__main__":
     main()

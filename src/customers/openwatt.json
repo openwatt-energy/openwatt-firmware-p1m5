@@ -1,9 +1,9 @@
 {
-  "customer": "soliseco",
-  "display_name": "SolisEco",
-  "version_suffix": "soliseco",
+  "customer": "openwatt",
+  "display_name": "OpenWatt",
+  "version_suffix": "ow",
   "fingerprint_default": "",
-  "ap_ssid_prefix": "SolisEco",
+  "ap_ssid_prefix": "OpenWatt",
   "salt_string": "CHANGE_ME_SALT",
   "mqtt": {
     "broker_host": "mqtt.example.com",
@@ -16,9 +16,9 @@
     "mqtt_settings_ui": false
   },
   "theme": {
-    "primary": "#22c55e",
+    "primary": "#2563eb",
     "background": "#ffffff",
     "text": "#111827",
-    "accent": "#16a34a"
+    "accent": "#1d4ed8"
   }
 }

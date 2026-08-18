@@ -104,8 +104,9 @@ https://eohagurgmhwipdmqwcfw.supabase.co/storage/v1/object/firmwares/p1m5_v1.0.4
 
 Today the pieces are:
 
-1. **Build + upload** — `scripts/build_variant.py` builds both variants;
-   the release skill uploads them to a Supabase Storage `firmwares` bucket.
+1. **Build + upload** — `pio run -e openwatt/soliseco/creos` builds each
+   variant from its `src/customers/*.json` config; the release skill uploads
+   the resulting binaries to a Supabase Storage `firmwares` bucket.
 2. **Device → target mapping** — an `ota_firmwares` table (Supabase /
    PostgREST) records which version each dongle should run.
 3. **Serving** — an HTTP endpoint that reads the table and the storage bucket

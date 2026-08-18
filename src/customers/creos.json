@@ -1,6 +1,7 @@
 {
   "customer": "creos",
   "display_name": "Creos",
+  "version_suffix": "creos",
   "fingerprint_default": "REDACTED_FINGERPRINT",
   "ap_ssid_prefix": "Creos",
   "salt_string": "CHANGE_ME_SALT",
