@@ -42,8 +42,13 @@ void MQTTClient::begin(Preferences& prefs, const String& devId, const String& se
 
   // Initialize appropriate client
   if (useSecure) {
-    // For TLS, skip certificate validation for now (can be added later)
+#if MQTT_TLS_VERIFY
+    wifiClientSecure.setCACert(MQTT_CA_CERT);
+    LOG_INFO(MODULE_MQTT, "TLS certificate verification enabled");
+#else
     wifiClientSecure.setInsecure();
+    LOG_WARN(MODULE_MQTT, "TLS certificate verification DISABLED (insecure)");
+#endif
     client = new PubSubClient(wifiClientSecure);
   } else {
     client = new PubSubClient(wifiClientPlain);
@@ -195,7 +200,11 @@ void MQTTClient::setConfig(const MQTTConfig& newConfig) {
 
   if (config.host.length() > 0) {
     if (useSecure) {
+#if MQTT_TLS_VERIFY
+      wifiClientSecure.setCACert(MQTT_CA_CERT);
+#else
       wifiClientSecure.setInsecure();
+#endif
       client = new PubSubClient(wifiClientSecure);
     } else {
       client = new PubSubClient(wifiClientPlain);
