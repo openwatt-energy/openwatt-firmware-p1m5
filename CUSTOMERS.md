@@ -18,7 +18,7 @@ pio run -e soliseco
 
 ```bash
 # Build without customer config (uses defaults)
-pio run -e m5stack-atom
+pio run -e openwatt
 ```
 
 ## Creating a New Customer
@@ -54,9 +54,9 @@ pio run -e m5stack-atom
 
 ```ini
 [env:customername]
-extends = env:m5stack-atom
+extends = env:openwatt
 build_flags =
-  ${env.m5stack-atom.build_flags}
+  ${env.openwatt.build_flags}
   -DCUSTOMER_CONFIG_H
 ```
 
@@ -105,7 +105,7 @@ The firmware tracks the number of reboots in NVS. This counter is:
 
 ## Firmware Version
 
-- OpenWatt: `v1.0.24-ow`
-- SolisEco: `v1.0.24-soliseco`
+- OpenWatt: `v1.0.47-ow`
+- SolisEco: `v1.0.47-soliseco`
 
 The version suffix is automatically appended based on the customer config.

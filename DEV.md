@@ -24,8 +24,8 @@ If it resets, the image is wrong or something else is wrong; fix that before ste
 
 - In `src/config.h` set `ENABLE_P1_READER 1`.
 - Clean build and flash:
-  - `python3 -m platformio run -t clean -e m5stack-core-esp32`
-  - `python3 -m platformio run -e m5stack-core-esp32`
+  - `python3 -m platformio run -t clean -e openwatt`
+  - `python3 -m platformio run -e openwatt`
   - `./build-and-flash.sh` (or your usual flash command)
 - Serial should show:
   - `Creating P1 reader task (Serial1 init deferred)...`
@@ -46,7 +46,7 @@ If it WDTs again, the next move is to init Serial1 without `setRxBufferSize` (us
 
 - One feature at a time; confirm with serial log before the next step.
 - After any change: clean build + flash, then test. If it breaks, the last change is the cause.
-- Reference: `firmware/IMPLEMENTATION_SPEC.md` and `firmware/README.md` for API/NVS/P1 spec.
+- Reference: `src/p1_reader.h` and `src/web_api.cpp` for the P1 data format and API endpoints.
 
 ---
 

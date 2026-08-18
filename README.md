@@ -8,7 +8,7 @@ Built with **PlatformIO + Arduino** (ESP32), not ESPHome.
 
 - **P1**: Serial1 GPIO 21/22, 115200 8N1, DSMR telegram parsing
 - **Web**: Async HTTP server, WebSocket live stream, REST API
-- **MQTT**: Optional TLS publish to `mqtt.example.com`
+- **MQTT**: Optional TLS publish to a configurable broker
 - **OTA**: Optional over-the-air updates
 
 ## Quick Start
@@ -49,25 +49,17 @@ See **[docs/](docs/)** for user-facing guides:
 - [LED Indicator](docs/LED_INDICATOR.md) — LED colour/blink meanings
 - [Hardware](docs/HARDWARE.md) — pinout, meter connection, buttons & reset
 
-## Full Documentation
+## Developer Documentation
 
-See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete guide covering:
-
-- Web UI testing (local simulator)
-- Unit testing (PlatformIO)
-- Building firmware
-- Flashing (local/remote/OTA)
-- Deployment process
-- API testing
-- Debugging & monitoring
-- Troubleshooting
+See **[DEV.md](DEV.md)** for the development & testing workflow (stable boot →
+WiFi → P1 → meter test) and NVS/WiFi troubleshooting.
 
 ## Configuration
 
 Edit `src/config.h`:
 
 ```cpp
-#define FIRMWARE_VERSION "v1.0.45"
+#define FIRMWARE_VERSION_BASE "v1.0.47"
 #define ENABLE_P1_READER 1    // P1 meter reading
 #define ENABLE_MQTT 1         // MQTT client
 #define ENABLE_OTA 1          // OTA updates
@@ -78,21 +70,13 @@ WiFi/MQTT settings via Web UI at `http://<device-ip>/settings`
 ## Project Structure
 
 ```
-firmwares/p1m5/
 ├── src/              # Source code
-├── data/             # Web UI files
 ├── test/             # Unit tests & P1 simulator
 ├── web_simulator/    # Local web UI testing
-└── DEVELOPMENT.md    # Full documentation
+├── scripts/          # Build, flash & release scripts
+├── docs/             # User & developer documentation
+└── DEV.md            # Development guide
 ```
-
-## Reference Docs
-
-For DSMR spec, UART layout, and API shape, see `firmware/` at repo root:
-
-- `firmware/IMPLEMENTATION_SPEC.md` - UART, OBIS codes, telegram format, CRC16, API shapes
-- `firmware/P1_PARSER_FINDINGS.md` - P1 parsing checklist
-- `firmware/README.md` - Partition layout, memory segments
 
 ## Credits
 
@@ -103,6 +87,7 @@ subsidiary, since closed). The project draws inspiration from the open-source
 ## License
 
 This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)** —
-see [LICENSE](LICENSE).
+see [LICENSE](LICENSE). Third-party library licenses are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Copyright © 2026 OpenWatt srl.
