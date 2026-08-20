@@ -2,8 +2,21 @@
 
 The OpenWatt P1M5 dongle supports bidirectional communication via MQTT. This allows the OpenWatt control center to remotely configure the dongle and use it as a local network proxy (HTTP, Modbus, TCP Scanner).
 
-## Topics
+## Done / to do
+### Done
+ - Tesla Wall readings
+ - SMA Sunny Boy monitor
 
+### To do
+ - SMA Sunny Boy throttling
+ - SMA Sunny Boy monitor over HTTP
+ - SolisEco monitor
+ - SolisEco control
+ - Shelly models
+ - HTTP proxy over MQTT
+
+
+## Topics
 *   **Command Topic:** `<topic_prefix><device_id>/cmd` (e.g., `P1M5/P1850D1C/cmd`)
 *   **Response Topic:** `<topic_prefix><device_id>/cmd_response` (e.g., `P1M5/P1850D1C/cmd_response`)
 
@@ -156,3 +169,7 @@ Publishes raw P1 telegrams to `<prefix><device_id>/raw` for debugging meter comp
   "cmd": "disable_raw_debug"
 }
 ```
+
+
+# Commands
+DONGLE_ID=P1850D1C

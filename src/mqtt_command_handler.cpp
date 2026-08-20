@@ -43,7 +43,7 @@ void MQTTCommandHandler::handleMessage(const String& topic, const String& payloa
 
   if (action == "http_request") {
     ProxyHTTP::handleRequest(request, responseTopic);
-  } else if (action == "modbus_read") {
+  } else if (action == "modbus_read" || action == "modbus_write") {
     ProxyModbus::handleRequest(request, responseTopic);
   } else if (action == "scan_ports") {
     ProxyScanner::handleRequest(request, responseTopic);

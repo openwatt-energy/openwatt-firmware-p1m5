@@ -24,6 +24,20 @@ void ProxyModbus::handleRequest(JsonObject request, const String& responseTopic)
   uint16_t address = request["address"].as<uint16_t>();
   uint16_t count = request.containsKey("count") ? request["count"].as<uint16_t>() : 1;
 
+  bool isWrite = (funcCode == 6 || funcCode == 16);
+  JsonArray writeValues;
+  if (isWrite) {
+    if (!request.containsKey("write_values")) {
+      DebugLogger::error(MODULE_PROXY, "Modbus write request missing write_values array");
+      return;
+    }
+    writeValues = request["write_values"].as<JsonArray>();
+    if (funcCode == 16 && writeValues.size() != count) {
+      DebugLogger::error(MODULE_PROXY, "Modbus write count mismatch");
+      return;
+    }
+  }
+
   DebugLogger::info(MODULE_PROXY, "Modbus request %d to %s:%d", funcCode, ipStr.c_str(), port);
 
   WiFiClient client;
@@ -44,7 +58,8 @@ void ProxyModbus::handleRequest(JsonObject request, const String& responseTopic)
     return;
   }
 
-  uint8_t requestBuf[12];
+  uint16_t reqLength = isWrite ? (funcCode == 6 ? 6 : 7 + (count * 2)) : 6;
+  uint8_t* requestBuf = new uint8_t[7 + reqLength];
   uint16_t transId = random(1, 65535);
 
   // MBAP
@@ -52,18 +67,35 @@ void ProxyModbus::handleRequest(JsonObject request, const String& responseTopic)
   requestBuf[1] = transId & 0xFF;
   requestBuf[2] = 0; // Protocol ID high
   requestBuf[3] = 0; // Protocol ID low
-  requestBuf[4] = 0; // Length high (6 bytes follow for read)
-  requestBuf[5] = 6; // Length low
+  requestBuf[4] = reqLength >> 8; // Length high
+  requestBuf[5] = reqLength & 0xFF; // Length low
   requestBuf[6] = unit_id;
 
   // PDU
   requestBuf[7] = funcCode;
   requestBuf[8] = address >> 8;
   requestBuf[9] = address & 0xFF;
-  requestBuf[10] = count >> 8;
-  requestBuf[11] = count & 0xFF;
 
-  client.write(requestBuf, 12);
+  if (funcCode == 6) {
+    uint16_t val = writeValues[0].as<uint16_t>();
+    requestBuf[10] = val >> 8;
+    requestBuf[11] = val & 0xFF;
+  } else if (funcCode == 16) {
+    requestBuf[10] = count >> 8;
+    requestBuf[11] = count & 0xFF;
+    requestBuf[12] = count * 2; // byte count
+    for (int i = 0; i < count; i++) {
+      uint16_t val = writeValues[i].as<uint16_t>();
+      requestBuf[13 + (i*2)] = val >> 8;
+      requestBuf[14 + (i*2)] = val & 0xFF;
+    }
+  } else {
+    requestBuf[10] = count >> 8;
+    requestBuf[11] = count & 0xFF;
+  }
+
+  client.write(requestBuf, 7 + reqLength);
+  delete[] requestBuf;
 
   // Wait for response header (7 bytes MBAP + 2 bytes PDU min)
   unsigned long startWait = millis();
@@ -83,6 +115,9 @@ void ProxyModbus::handleRequest(JsonObject request, const String& responseTopic)
     if (respHeader[7] == (funcCode | 0x80)) {
       doc["error"] = "exception";
       doc["exception_code"] = respHeader[8];
+    } else if (isWrite) {
+      // Write response just confirms success, no data payload to parse like read
+      doc["success"] = true;
     } else {
       // It's a valid read response
       uint8_t byteCount = respHeader[8];

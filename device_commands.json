@@ -122,6 +122,24 @@
               "index": 0
             }
           }
+        },
+        "set_active_power_limit": {
+          "description": "Set Active Power Limitation (%)",
+          "protocol": "modbus",
+          "request": {
+            "port": 502,
+            "unit_id": 3,
+            "function": 6,
+            "address": 40016,
+            "count": 1
+          },
+          "request_mapping": {
+            "limit_percentage": {
+              "type": "U16",
+              "scale": 100,
+              "index": 0
+            }
+          }
         }
       }
     }
