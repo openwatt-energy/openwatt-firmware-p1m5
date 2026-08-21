@@ -30,15 +30,18 @@
 
   // Shared secret used to derive MQTT passwords:
   //   password = base64(SHA256(SALT_STRING + deviceId)[:10])
-  // Must match the salt configured on the MQTT broker (mqtt.openwatt.eu).
-  // Inject the real value at build time (e.g. -DSALT_STRING='"<secret>"');
+  // Must match the salt configured on the MQTT broker. Override at build time
+  // via the MQTT_SALT environment variable (see scripts/build_secrets.py);
   // never commit the real salt.
   #ifndef SALT_STRING
   #define SALT_STRING "CHANGE_ME_SALT"
   #endif
 
   // MQTT Configuration
+  // Override at build time via the MQTT_BROKER_HOST environment variable.
+  #ifndef MQTT_BROKER_HOST
   #define MQTT_BROKER_HOST "mqtt.openwatt.eu"
+  #endif
   #define MQTT_BROKER_PORT 8883  // TLS port
   #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
   #define MQTT_DEFAULT_TOPIC "P1M5/"

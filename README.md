@@ -67,6 +67,13 @@ Edit `src/config.h`:
 
 WiFi/MQTT settings via Web UI at `http://<device-ip>/settings`
 
+Build-time secrets (MQTT broker host + salt) are injected via environment
+variables rather than committed — see `scripts/build_secrets.py`:
+
+```bash
+MQTT_SALT="<secret>" MQTT_BROKER_HOST="mqtt.openwatt.eu" pio run -e openwatt
+```
+
 ## Project Structure
 
 ```

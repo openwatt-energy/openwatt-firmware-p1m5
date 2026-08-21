@@ -74,9 +74,10 @@ python test/simulator/p1_simulator.py --port /dev/ttyUSB1 --interval 5
 
 2. **Set the MQTT salt** (shared secret) at build time. The firmware derives
    the MQTT password as `base64(SHA256(salt + deviceId)[:10])`, so the broker
-   (`mqtt.openwatt.eu`) must be configured with the same salt:
+   must be configured with the same salt. Pass it (and the broker host) via
+   environment variables:
    ```bash
-   PLATFORMIO_BUILD_FLAGS='-DSALT_STRING="<secret>"' pio run -e openwatt
+   MQTT_SALT="<secret>" MQTT_BROKER_HOST="mqtt.openwatt.eu" pio run -e openwatt
    ```
 
 3. **MQTT endpoint** is set in `src/config.h` (`mqtt.openwatt.eu`, port `8883`,
