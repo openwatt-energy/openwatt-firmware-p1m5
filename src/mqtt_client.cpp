@@ -19,7 +19,7 @@ void MQTTClient::begin(Preferences& prefs, const String& devId, const String& se
   secretKey = secKey;
 
   // Force production MQTT settings and save to NVS
-  config.host = MQTT_BROKER_HOST;  // mqtt.example.com
+  config.host = MQTT_BROKER_HOST;  // mqtt.openwatt.eu
   config.port = MQTT_BROKER_PORT;  // 8883
   config.topic = MQTT_DEFAULT_TOPIC;  // P1M5/
   config.username = deviceId;  // Username is the P1 number (e.g., "P19D49B8")

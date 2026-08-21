@@ -3,7 +3,7 @@
 
 // Feature flags — native Espressif (PlatformIO) build is the main firmware
 #define ENABLE_P1_READER 1  // DSMR P1 reader enabled
-#define ENABLE_MQTT 1       // MQTT client enabled for mqtt.example.com
+#define ENABLE_MQTT 1       // MQTT client enabled (broker: mqtt.openwatt.eu)
 #define ENABLE_OTA 1        // OTA updates enabled
 
 // Include customer config first (if defined) for version suffix and settings
@@ -27,10 +27,21 @@
   #define CUSTOMER_DISPLAY_NAME "OpenWatt"
   #define CUSTOMER_FINGERPRINT_DEFAULT ""
   #define AP_SSID_PREFIX "OpenWatt"
-  #define SALT_STRING "CHANGE_ME_SALT"
 
-  // MQTT Configuration for mqtt.example.com
-  #define MQTT_BROKER_HOST "mqtt.example.com"
+  // Shared secret used to derive MQTT passwords:
+  //   password = base64(SHA256(SALT_STRING + deviceId)[:10])
+  // Must match the salt configured on the MQTT broker. Override at build time
+  // via the MQTT_SALT environment variable (see scripts/build_secrets.py);
+  // never commit the real salt.
+  #ifndef SALT_STRING
+  #define SALT_STRING "CHANGE_ME_SALT"
+  #endif
+
+  // MQTT Configuration
+  // Override at build time via the MQTT_BROKER_HOST environment variable.
+  #ifndef MQTT_BROKER_HOST
+  #define MQTT_BROKER_HOST "mqtt.openwatt.eu"
+  #endif
   #define MQTT_BROKER_PORT 8883  // TLS port
   #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
   #define MQTT_DEFAULT_TOPIC "P1M5/"

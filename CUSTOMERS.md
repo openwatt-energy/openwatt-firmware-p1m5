@@ -2,6 +2,12 @@
 
 This directory contains customer-specific configuration for building variant firmware images.
 
+> **Note:** "Creos" is **not** a customer. Creos is the Luxembourg grid
+> operator, and Luxembourg smart-meter support (DLMS decryption) is a runtime
+> **feature** of the standard firmware, enabled by setting the `creos_key` in
+> the Web UI ("Luxembourg (Creos) Smart Meter") or via MQTT `set_creos_key`.
+> It requires no separate customer build or branding.
+
 ## Quick Start
 
 ### Build for SolisEco

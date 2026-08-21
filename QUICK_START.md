@@ -72,19 +72,17 @@ python test/simulator/p1_simulator.py --port /dev/ttyUSB1 --interval 5
    #define ENABLE_MQTT 1
    ```
 
-2. **Configure secret key** (get from your secrets):
-   ```cpp
-   // Option 1: Add to config.h temporarily
-   #define MQTT_SECRET_KEY "your-secret-key-here"
-   
-   // Option 2: Store in NVS via API (recommended)
+2. **Set the MQTT salt** (shared secret) at build time. The firmware derives
+   the MQTT password as `base64(SHA256(salt + deviceId)[:10])`, so the broker
+   must be configured with the same salt. Pass it (and the broker host) via
+   environment variables:
+   ```bash
+   MQTT_SALT="<secret>" MQTT_BROKER_HOST="mqtt.openwatt.eu" pio run -e openwatt
    ```
 
-3. **Configure via Web UI:**
-   - Go to Settings
-   - Enter MQTT host: `mqtt.example.com`
-   - Enter MQTT port: `8883`
-   - Enter MQTT topic: `p1m5/<your-device-id>`
+3. **MQTT endpoint** is set in `src/config.h` (`mqtt.openwatt.eu`, port `8883`,
+   TLS) and used automatically. Username is the device ID (e.g. `P1846680`);
+   the password is derived from the salt above.
 
 4. **Monitor connection:**
    ```bash

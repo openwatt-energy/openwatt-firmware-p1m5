@@ -17,10 +17,10 @@ are in [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) and
       server certificate.
 - [ ] **OTA image signing** — downloaded firmware is flashed with no
       signature/checksum verification.
-- [ ] **Real build-time secrets** — `SALT_STRING`, `MQTT_BROKER_HOST`,
-      `OTA_FIRMWARE_URL` are placeholders (`CHANGE_ME_SALT`, `mqtt.example.com`,
-      `api.example.com`). Inject real values at build time and never commit
-      them.
+- [ ] **Real build-time secrets** — `SALT_STRING` and `OTA_FIRMWARE_URL` are
+      still placeholders (`CHANGE_ME_SALT`, `api.example.com`). Inject real
+      values at build time and never commit them. (`MQTT_BROKER_HOST` now points
+      at `mqtt.openwatt.eu`.)
 
 ## Code quality
 
