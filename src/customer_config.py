@@ -52,7 +52,11 @@ def generate_header(config, customer_name):
         f'#define CUSTOMER_NAME "{config.get("customer", "")}"',
         f'#define CUSTOMER_DISPLAY_NAME "{config.get("display_name", "")}"',
         f'#define CUSTOMER_FINGERPRINT_DEFAULT "{config.get("fingerprint_default", "")}"',
+        "",
+        "// SALT_STRING (MQTT shared secret) - overridable at build time",
+        "#ifndef SALT_STRING",
         f'#define SALT_STRING "{config.get("salt_string", "")}"',
+        "#endif",
         "",
         "// AP Configuration",
         f'#define AP_SSID_PREFIX "{config.get("ap_ssid_prefix", "OpenWatt")}"',
@@ -62,7 +66,9 @@ def generate_header(config, customer_name):
 
     mqtt = config.get("mqtt", {})
     lines.extend([
+        "#ifndef MQTT_BROKER_HOST",
         f'#define MQTT_BROKER_HOST "{mqtt.get("broker_host", "mqtt.example.com")}"',
+        "#endif",
         f'#define MQTT_BROKER_PORT {mqtt.get("broker_port", 8883)}',
         f'#define MQTT_DEFAULT_TOPIC "{mqtt.get("topic_prefix", "P1M5/")}"',
         f'#define MQTT_PUBLISH_INTERVAL_MS {mqtt.get("publish_interval_ms", 5000)}',

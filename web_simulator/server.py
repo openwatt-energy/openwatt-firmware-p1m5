@@ -16,7 +16,7 @@ import build_templates
 parser = argparse.ArgumentParser(description="Run the UI Emulator")
 parser.add_argument(
     '--variant',
-    choices=['openwatt', 'soliseco', 'creos'],
+    choices=['openwatt', 'soliseco'],
     default='openwatt',
     help='Customer variant to emulate'
 )

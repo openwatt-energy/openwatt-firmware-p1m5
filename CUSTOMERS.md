@@ -7,12 +7,17 @@ single generator, `src/customer_config.py`, converts that JSON into
 Each PlatformIO environment name maps directly to a JSON file of the same name
 (`openwatt` → `src/customers/openwatt.json`, etc.).
 
+> **Note:** "Creos" is **not** a customer. Creos is the Luxembourg grid
+> operator, and Luxembourg smart-meter support (DLMS decryption) is a runtime
+> **feature** of the standard firmware, enabled by setting the `creos_key` in
+> the Web UI ("Luxembourg (Creos) Smart Meter") or via MQTT `set_creos_key`.
+> It requires no separate customer build or branding.
+
 ## Build a variant
 
 ```bash
 pio run -e openwatt    # OpenWatt (default)
 pio run -e soliseco    # SolisEco
-pio run -e creos       # Creos
 ```
 
 `src/customer_config.py` runs automatically (wired as an extra_script in
