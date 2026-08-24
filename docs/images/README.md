@@ -7,6 +7,9 @@ drop in your assets using these names (or update the references in the docs).
 |------|---------|-------------|
 | `dongle-photo.png` | `HARDWARE.md` | Product photo of the dongle (front view) |
 | `install-photo.png` | `HARDWARE.md` | Photo of the dongle plugged into a meter's P1 port |
+| `ui-dashboard.png` | `USER_MANUAL.md` | Screenshot of the Dashboard page |
+| `ui-settings.png` | `USER_MANUAL.md` | Screenshot of the Settings page |
+| `ui-system.png` | `USER_MANUAL.md` | Screenshot of the System page |
 
 Notes:
 

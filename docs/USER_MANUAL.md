@@ -50,6 +50,32 @@ Connect the dongle to a USB-C power source. On first boot the LED turns
 Once the LED is **solid green**, the dongle is streaming data. Log in to
 [openwatt.be](https://www.openwatt.be) to see your live data.
 
+## Web interface
+
+The dongle serves a web interface for monitoring and configuration. It has
+three pages, reachable from the top navigation bar.
+
+### Dashboard
+
+Live status (WiFi, meter, cloud and WebSocket), quick stats, and the real-time
+meter data streamed from the P1 port.
+
+![Dashboard](images/ui-dashboard.png)
+
+### Settings
+
+WiFi configuration (scan, SSID and password), plus the Luxembourg (Creos)
+smart-meter decryption key under **Advanced Settings**.
+
+![Settings](images/ui-settings.png)
+
+### System
+
+Device identity (ID, serial, fingerprint), firmware version, and the
+**Reboot Device** / **Factory Reset** actions.
+
+![System](images/ui-system.png)
+
 ## LED status
 
 The LED on the dongle reports its status. See
