@@ -1,0 +1,24 @@
+{
+  "customer": "openwatt",
+  "display_name": "OpenWatt",
+  "version_suffix": "ow",
+  "fingerprint_default": "",
+  "ap_ssid_prefix": "OpenWatt",
+  "salt_string": "CHANGE_ME_SALT",
+  "mqtt": {
+    "broker_host": "mqtt.openwatt.eu",
+    "broker_port": 8883,
+    "topic_prefix": "P1M5/",
+    "publish_interval_ms": 5000
+  },
+  "features": {
+    "json_api_enabled": true,
+    "mqtt_settings_ui": false
+  },
+  "theme": {
+    "primary": "#2563eb",
+    "background": "#ffffff",
+    "text": "#111827",
+    "accent": "#1d4ed8"
+  }
+}
