@@ -25,6 +25,7 @@ void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
   // Configure WiFi for maximum performance
   WiFi.setSleep(false);  // Disable light sleep for stable connection
   WiFi.setAutoReconnect(false);  // We handle reconnect ourselves
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);  // Scan all channels before connecting
   WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);  // Connect to strongest signal
 
   // Load saved credentials
