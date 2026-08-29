@@ -17,6 +17,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: powertrader-399210
+      GCP_SECRET_NAME: openwatt-mqtt-salt
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,14 +37,42 @@ jobs:
       - name: Checkout tag
         run: git checkout "${{ steps.tag.outputs.tag }}"
 
+      # Build-time secret: MQTT salt (SALT_STRING). Prefer Google Cloud Secret
+      # Manager (via GCP_SA_KEY), fall back to the MQTT_SALT GitHub secret.
+      - name: Resolve MQTT salt
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GITHUB_SALT: ${{ secrets.MQTT_SALT }}
+        run: |
+          SALT=""
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "Fetching MQTT salt from Google Cloud Secret Manager…"
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+            curl -sSL https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-461.0.0-linux-x86_64.tar.gz | tar -xzf - -C /tmp
+            export PATH="/tmp/google-cloud-sdk/bin:$PATH"
+            gcloud --quiet auth activate-service-account --key-file=/tmp/gcp-key.json >/dev/null 2>&1
+            SALT="$(gcloud --quiet secrets versions access latest --secret="$GCP_SECRET_NAME" --project="$GCP_PROJECT_ID" 2>/dev/null)" || SALT=""
+            rm -f /tmp/gcp-key.json
+          fi
+          if [ -z "$SALT" ] && [ -n "$GITHUB_SALT" ]; then
+            echo "Falling back to the MQTT_SALT GitHub secret."
+            SALT="$GITHUB_SALT"
+          fi
+          if [ -z "$SALT" ]; then
+            echo "::error::No MQTT salt found. Set GCP_SA_KEY (Secret Manager) or MQTT_SALT (GitHub secret)."
+            exit 1
+          fi
+          echo "::add-mask::$SALT"
+          echo "MQTT_SALT=$SALT" >> "$GITHUB_ENV"
+
       - name: Build image
         run: docker build -t openwatt-firmware-p1m5 .
 
       - name: Compile OpenWatt variant
-        run: docker run --rm -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e openwatt
+        run: docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e openwatt
 
       - name: Compile SolisEco variant
-        run: docker run --rm -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e soliseco
+        run: docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e soliseco
 
       - name: Publish GitHub release
         env:
