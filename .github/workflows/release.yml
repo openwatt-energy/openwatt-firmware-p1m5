@@ -56,5 +56,7 @@ jobs:
             $PRERELEASE \
             --title "$TAG" \
             --generate-notes \
+            .pio/build/openwatt/bootloader.bin \
+            .pio/build/openwatt/partitions.bin \
             p1m5_v*-ow.bin \
             p1m5_v*-soliseco.bin
