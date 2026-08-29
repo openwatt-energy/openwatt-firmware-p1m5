@@ -3,7 +3,7 @@
 
 // Feature flags — native Espressif (PlatformIO) build is the main firmware
 #define ENABLE_P1_READER 1  // DSMR P1 reader enabled
-#define ENABLE_MQTT 1       // MQTT client enabled for mqtt.example.com
+#define ENABLE_MQTT 1       // MQTT client enabled
 #define ENABLE_OTA 1        // OTA updates enabled
 
 // Include customer config first (if defined) for version suffix and settings
@@ -29,8 +29,8 @@
   #define AP_SSID_PREFIX "OpenWatt"
   #define SALT_STRING "CHANGE_ME_SALT"
 
-  // MQTT Configuration for mqtt.example.com
-  #define MQTT_BROKER_HOST "mqtt.example.com"
+  // MQTT Configuration
+  #define MQTT_BROKER_HOST "mqtt.openwatt.eu"
   #define MQTT_BROKER_PORT 8883  // TLS port
   #define MQTT_BROKER_PORT_PLAIN 1883  // Plain port (for testing)
   #define MQTT_DEFAULT_TOPIC "P1M5/"

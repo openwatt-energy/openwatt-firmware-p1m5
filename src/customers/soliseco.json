@@ -5,7 +5,7 @@
   "ap_ssid_prefix": "SolisEco",
   "salt_string": "CHANGE_ME_SALT",
   "mqtt": {
-    "broker_host": "mqtt.example.com",
+    "broker_host": "mqtt.openwatt.eu",
     "broker_port": 8883,
     "topic_prefix": "P1M5/",
     "publish_interval_ms": 5000
