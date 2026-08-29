@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and release (e.g. v1.0.48-rc2)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tag
+        run: git checkout "${{ steps.tag.outputs.tag }}"
+
+      - name: Build image
+        run: docker build -t openwatt-firmware-p1m5 .
+
+      - name: Compile OpenWatt variant
+        run: docker run --rm -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e openwatt
+
+      - name: Compile SolisEco variant
+        run: docker run --rm -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e soliseco
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          PRERELEASE=""
+          case "$TAG" in
+            *rc*|*beta*|*alpha*) PRERELEASE="--prerelease" ;;
+          esac
+          gh release create "$TAG" \
+            $PRERELEASE \
+            --title "$TAG" \
+            --generate-notes \
+            p1m5_v*-ow.bin \
+            p1m5_v*-soliseco.bin
