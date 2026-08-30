@@ -74,6 +74,16 @@ jobs:
       - name: Compile SolisEco variant
         run: docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e soliseco
 
+      # Stage assets outside the repo: gh ignores .gitignore'd paths (`.pio`, `*.bin`).
+      - name: Stage release assets
+        run: |
+          mkdir -p /tmp/release-assets
+          cp .pio/build/openwatt/bootloader.bin /tmp/release-assets/
+          cp .pio/build/openwatt/partitions.bin /tmp/release-assets/
+          cp p1m5_v*-ow.bin /tmp/release-assets/
+          cp p1m5_v*-soliseco.bin /tmp/release-assets/
+          ls -la /tmp/release-assets/
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,7 +99,4 @@ jobs:
             $PRERELEASE \
             --title "$TAG" \
             --generate-notes \
-            .pio/build/openwatt/bootloader.bin \
-            .pio/build/openwatt/partitions.bin \
-            p1m5_v*-ow.bin \
-            p1m5_v*-soliseco.bin
+            /tmp/release-assets/*
