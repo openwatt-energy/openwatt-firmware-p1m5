@@ -76,8 +76,10 @@ jobs:
             set -e
             pio run -e openwatt
             pio run -e soliseco
-            cp .pio/build/openwatt/bootloader.bin /workspace/bootloader.bin
-            cp .pio/build/openwatt/partitions.bin /workspace/partitions.bin
+            # bootloader/partitions are identical across variants; soliseco is the
+            # last build so its .pio/build/soliseco is still intact (openwatt is cleaned).
+            cp .pio/build/soliseco/bootloader.bin /workspace/bootloader.bin
+            cp .pio/build/soliseco/partitions.bin /workspace/partitions.bin
           '
           echo "--- host workspace ---"
           pwd
