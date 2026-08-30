@@ -83,6 +83,8 @@ jobs:
           case "$TAG" in
             *rc*|*beta*|*alpha*) PRERELEASE="--prerelease" ;;
           esac
+          # Re-create the release if it already exists (e.g. re-publishing an rc).
+          gh release delete "$TAG" --yes 2>/dev/null || true
           gh release create "$TAG" \
             $PRERELEASE \
             --title "$TAG" \
