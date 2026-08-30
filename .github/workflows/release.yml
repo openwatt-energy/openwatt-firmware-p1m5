@@ -68,18 +68,29 @@ jobs:
       - name: Build image
         run: docker build -t openwatt-firmware-p1m5 .
 
-      - name: Compile OpenWatt variant
-        run: docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e openwatt
+      # Build both variants in a single container and copy the shared platform
+      # binaries into the mounted workspace root alongside the renamed apps.
+      - name: Build all variants and stage platform binaries
+        run: |
+          docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 sh -c '
+            set -e
+            pio run -e openwatt
+            pio run -e soliseco
+            cp .pio/build/openwatt/bootloader.bin /workspace/bootloader.bin
+            cp .pio/build/openwatt/partitions.bin /workspace/partitions.bin
+          '
+          echo "--- host workspace ---"
+          pwd
+          ls -la
+          echo "--- host .bin files ---"
+          find . -maxdepth 3 -name '*.bin' 2>/dev/null
 
-      - name: Compile SolisEco variant
-        run: docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 pio run -e soliseco
-
-      # Stage assets outside the repo: gh ignores .gitignore'd paths (`.pio`, `*.bin`).
+      # Stage assets outside the repo: gh skips .gitignore'd paths.
       - name: Stage release assets
         run: |
           mkdir -p /tmp/release-assets
-          cp .pio/build/openwatt/bootloader.bin /tmp/release-assets/
-          cp .pio/build/openwatt/partitions.bin /tmp/release-assets/
+          cp bootloader.bin /tmp/release-assets/
+          cp partitions.bin /tmp/release-assets/
           cp p1m5_v*-ow.bin /tmp/release-assets/
           cp p1m5_v*-soliseco.bin /tmp/release-assets/
           ls -la /tmp/release-assets/
