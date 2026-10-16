@@ -73,6 +73,13 @@ def generate_header(config, customer_name):
         f'#define MQTT_DEFAULT_TOPIC "{mqtt.get("topic_prefix", "P1M5/")}"',
         f'#define MQTT_PUBLISH_INTERVAL_MS {mqtt.get("publish_interval_ms", 5000)}',
         "",
+        "// OTA Configuration",
+    ])
+
+    ota = config.get("ota", {})
+    lines.extend([
+        f'#define OTA_FIRMWARE_URL "{ota.get("firmware_url", "https://api.openwatt.eu/ota")}"',
+        "",
         "// Feature Flags",
     ])
 
