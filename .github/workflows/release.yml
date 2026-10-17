@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and release (e.g. v1.0.48-rc3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: powertrader-399210
+      GCP_SECRET_NAME: openwatt-mqtt-salt
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tag
+        run: git checkout "${{ steps.tag.outputs.tag }}"
+
+      - name: Resolve MQTT salt
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GITHUB_SALT: ${{ secrets.MQTT_SALT }}
+        run: |
+          SALT=""
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "Fetching MQTT salt from Google Cloud Secret Manager…"
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+            curl -sSL https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-461.0.0-linux-x86_64.tar.gz | tar -xzf - -C /tmp
+            export PATH="/tmp/google-cloud-sdk/bin:$PATH"
+            gcloud --quiet auth activate-service-account --key-file=/tmp/gcp-key.json >/dev/null 2>&1
+            SALT="$(gcloud --quiet secrets versions access latest --secret="$GCP_SECRET_NAME" --project="$GCP_PROJECT_ID" 2>/dev/null)" || SALT=""
+            rm -f /tmp/gcp-key.json
+          fi
+          if [ -z "$SALT" ] && [ -n "$GITHUB_SALT" ]; then
+            echo "Falling back to the MQTT_SALT GitHub secret."
+            SALT="$GITHUB_SALT"
+          fi
+          if [ -z "$SALT" ]; then
+            echo "::error::No MQTT salt found. Set GCP_SA_KEY (Secret Manager) or MQTT_SALT (GitHub secret)."
+            exit 1
+          fi
+          echo "::add-mask::$SALT"
+          echo "MQTT_SALT=$SALT" >> "$GITHUB_ENV"
+
+      - name: Build image
+        run: docker build -t openwatt-firmware-p1m5 .
+
+      - name: Build variant and stage platform binaries
+        run: |
+          docker run --rm -e MQTT_SALT="$MQTT_SALT" -v "$PWD:/workspace" openwatt-firmware-p1m5 sh -c '
+            set -e
+            pio run -e openwatt
+            cp .pio/build/openwatt/bootloader.bin /workspace/bootloader.bin
+            cp .pio/build/openwatt/partitions.bin /workspace/partitions.bin
+          '
+          echo "--- host workspace ---"
+          pwd
+          ls -la
+
+      - name: Verify OTA URL in binary
+        run: |
+          strings p1m5_v*-ow.bin | grep "api\." | head -5
+          if strings p1m5_v*-ow.bin | grep -q "api.example.com"; then
+            echo "::error::OTA URL still points to api.example.com!"
+            exit 1
+          fi
+          echo "OTA URL looks correct."
+
+      - name: Stage release assets
+        run: |
+          mkdir -p /tmp/release-assets
+          cp bootloader.bin /tmp/release-assets/
+          cp partitions.bin /tmp/release-assets/
+          cp p1m5_v*-ow.bin /tmp/release-assets/
+          ls -la /tmp/release-assets/
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          PRERELEASE=""
+          case "$TAG" in
+            *rc*|*beta*|*alpha*) PRERELEASE="--prerelease" ;;
+          esac
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" \
+            $PRERELEASE \
+            --title "$TAG" \
+            --generate-notes \
+            /tmp/release-assets/*

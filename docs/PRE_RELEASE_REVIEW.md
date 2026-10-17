@@ -125,6 +125,10 @@ The refactors (deduplication, `startSoftAP`, precedence fix) are merged.
   `https://api.openwatt.eu/ota` (not `api.example.com`).
 - 🔴 **Verify MQTT broker**: `strings <binary> | grep "mqtt\."` —
   must show the correct production broker host.
+- 🔴 **Verify MQTT salt injected**: `strings <binary> | grep "CHANGE_ME_SALT"` —
+  should NOT appear; the real salt must be compiled in (never committed).
+- 🟡 **Verify LED status**: flash a device and confirm the SK6812/WS2812
+  LED shows the correct startup sequence (power-on, WiFi/MQTT connection).
 - 🟡 **Verify version string**: `strings <binary> | grep "^v1\."` should
   show the expected version tag.
 - 🟡 **Upload bootloader + partitions** alongside the firmware binary
