@@ -119,7 +119,18 @@ The refactors (deduplication, `startSoftAP`, precedence fix) are merged.
 
 ---
 
-## 4. Tidiness
+## 4. Build Verification (per-variant)
+
+- 🔴 **Verify OTA URL**: `strings <binary> | grep "api\."` — must show
+  `https://api.openwatt.eu/ota` (not `api.example.com`).
+- 🔴 **Verify MQTT broker**: `strings <binary> | grep "mqtt\."` —
+  must show the correct production broker host.
+- 🟡 **Verify version string**: `strings <binary> | grep "^v1\."` should
+  show the expected version tag.
+- 🟡 **Upload bootloader + partitions** alongside the firmware binary
+  in the GitHub release.
+
+## 5. Tidiness
 
 - 🟡 `data/` (`index.html`, `settings.html`, `system.html`) duplicates
   `src/templates/*.html`; not referenced by the code (the firmware serves
@@ -140,7 +151,9 @@ The refactors (deduplication, `startSoftAP`, precedence fix) are merged.
    env names (§2).
 2. **Legal** — add `THIRD_PARTY_NOTICES.md` (LGPL relinking note); decide the
    variant-config single source of truth (§1.3, §2.4).
-3. **Security** — API auth, TLS validation, OTA signing (§3), before broad
+3. **Build verification** — verify OTA URL, MQTT broker, and version strings in
+   the compiled binary (§4).
+4. **Security** — API auth, TLS validation, OTA signing (§3), before broad
    distribution.
-4. **Tidiness** — remove/consolidate `data/` and the unused AP-password script
-   (§1.5, §4).
+5. **Tidiness** — remove/consolidate `data/` and the unused AP-password script
+   (§1.5, §5).
