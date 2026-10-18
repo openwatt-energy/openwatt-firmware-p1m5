@@ -11,7 +11,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "platformio==6.1.19"
+RUN pip install --no-cache-dir "platformio~=6.1"
+# Bump ESP32 framework to match locally-resolved toolchain
 
 WORKDIR /workspace
 
