@@ -54,6 +54,11 @@ String WebAPI::deviceId;
 String WebAPI::serialNumber;
 P1Data WebAPI::latestData;
 
+// The AsyncWebServer callbacks run in the async_tcp task. A synchronous WiFi
+// scan can block that task long enough to trigger the ESP32-C3 watchdog.
+static bool wifiScanRequested = false;
+static uint8_t wifiScanRetryCount = 0;
+
 void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& devId, const String& serial) {
   WebAPI::prefs = &prefs;
   WebAPI::deviceId = devId;
@@ -240,9 +245,12 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     doc["active_power_l3_w"] = (d.powerImportL3 - d.powerExportL3) * 1000;
 
     // Voltage and current
-    doc["active_voltage_l1_v"] = d.voltageL1;
-    doc["active_voltage_l2_v"] = d.voltageL2;
-    doc["active_voltage_l3_v"] = d.voltageL3;
+    if (d.hasVoltageL1) doc["active_voltage_l1_v"] = d.voltageL1;
+    else doc["active_voltage_l1_v"] = nullptr;
+    if (d.hasVoltageL2) doc["active_voltage_l2_v"] = d.voltageL2;
+    else doc["active_voltage_l2_v"] = nullptr;
+    if (d.hasVoltageL3) doc["active_voltage_l3_v"] = d.voltageL3;
+    else doc["active_voltage_l3_v"] = nullptr;
     doc["active_current_l1_a"] = d.currentL1;
     doc["active_current_l2_a"] = d.currentL2;
     doc["active_current_l3_a"] = d.currentL3;
@@ -330,7 +338,7 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
       JsonDocument doc;
       DeserializationError error = deserializeJson(doc, (const char*)data);
 
-      if (!error && doc.containsKey("creos_key")) {
+      if (!error && doc["creos_key"].is<String>()) {
         String key = doc["creos_key"].as<String>();
         nvs_handle_t h;
         if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) == ESP_OK) {
@@ -375,30 +383,47 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     }
   );
 
-  // GET /api/wifiscan - Simple and reliable WiFi scan
+  // GET /api/wifiscan - Start/poll a non-blocking WiFi scan
   server.on("/api/wifiscan", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc;
     JsonArray networks = doc["networks"].to<JsonArray>();
 
-    SerialConsole::println("WiFi scan: Starting...");
+    int n = WiFi.scanComplete();
 
-    // Just scan - ESP32 can scan in any mode
-    int n = WiFi.scanNetworks();
-    SerialConsole::println("WiFi scan: Found " + String(n) + " networks");
-
-    if (n < 0) {
-      // Scan failed - try once more after a delay
-      SerialConsole::println("WiFi scan: First attempt failed, retrying...");
-      delay(500);
-      n = WiFi.scanNetworks();
-      SerialConsole::println("WiFi scan: Retry found " + String(n) + " networks");
+    if (!wifiScanRequested && n != WIFI_SCAN_RUNNING) {
+      SerialConsole::println("WiFi scan: Starting asynchronously...");
+      wifiScanRetryCount = 0;
+      n = WiFi.scanNetworks(true, false);
+      if (n == WIFI_SCAN_RUNNING) {
+        wifiScanRequested = true;
+      }
     }
 
-    if (n < 0) {
-      doc["error"] = "WiFi scan failed";
-      doc["status"] = "failed";
-      doc["hint"] = "Please try again";
+    if (n == WIFI_SCAN_RUNNING) {
+      doc["status"] = "scanning";
+    } else if (n == WIFI_SCAN_FAILED) {
+      wifiScanRequested = false;
+      WiFi.scanDelete();
+      if (wifiScanRetryCount == 0) {
+        wifiScanRetryCount = 1;
+        SerialConsole::println("WiFi scan: First attempt timed out, retrying asynchronously...");
+        n = WiFi.scanNetworks(true, false);
+        if (n == WIFI_SCAN_RUNNING) {
+          wifiScanRequested = true;
+          doc["status"] = "scanning";
+        } else {
+          SerialConsole::println("WiFi scan: Retry could not start");
+          doc["error"] = "WiFi scan failed";
+          doc["status"] = "failed";
+        }
+      } else {
+        SerialConsole::println("WiFi scan: Retry failed");
+        doc["error"] = "WiFi scan failed";
+        doc["status"] = "failed";
+        doc["hint"] = "Please try again";
+      }
     } else if (n == 0) {
+      wifiScanRequested = false;
       doc["status"] = "complete";
       doc["count"] = 0;
       doc["message"] = "No networks found";
@@ -432,10 +457,13 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
 
       doc["returned_count"] = validCount;
       SerialConsole::println("WiFi scan: Returned " + String(validCount) + " valid networks");
+      wifiScanRequested = false;
     }
 
-    // Clean up
-    WiFi.scanDelete();
+    // Keep results while scanning; release them only after completion.
+    if (n >= 0) {
+      WiFi.scanDelete();
+    }
 
     String response;
     serializeJson(doc, response);
@@ -484,15 +512,36 @@ void WebAPI::setup(AsyncWebServer& server, Preferences& prefs, const String& dev
     request->send(200, "application/json", "{\"status\":\"WiFi credentials cleared\"}");
   });
 
-  // PATCH /api/system/bootloader - try to enter serial bootloader (GPIO0 low + reset). Run esptool right after.
+  // PATCH /api/system/bootloader
   server.on("/api/system/bootloader", HTTP_PATCH, [](AsyncWebServerRequest *request){
-    request->send(200, "application/json", "{\"status\":\"entering_bootloader\",\"message\":\"GPIO0 low + reset. Run esptool within a few seconds.\"}");
+
+  #ifdef HW_SOLISECO_C3
+
+    request->send(
+      501,
+      "application/json",
+      "{\"status\":\"unsupported\",\"message\":\"Use the physical BOOT + RESET buttons on SolisEco ESP32-C3 V1.\"}"
+    );
+
+  #else
+
+    request->send(
+      200,
+      "application/json",
+      "{\"status\":\"entering_bootloader\",\"message\":\"GPIO0 low + reset. Run esptool within a few seconds.\"}"
+    );
+
     delay(500);
-    const int bootPin = 0;  // GPIO0 = BOOT on most ESP32 boards
+
+    const int bootPin = 0;
     pinMode(bootPin, OUTPUT);
     digitalWrite(bootPin, LOW);
+
     delay(200);
     ESP.restart();
+
+  #endif
+
   });
 
   // POST /api/system/ota-pull - download and flash from URL. Query: url= (e.g. ?url=http://192.0.2.1:28214/firmware.bin)

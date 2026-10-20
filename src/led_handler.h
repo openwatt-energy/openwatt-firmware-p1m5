@@ -54,7 +54,7 @@ public:
 
 private:
   static LEDStatus currentStatus;
-  static CRGB leds[1];  // Single LED for M5Stack Atom
+  static CRGB leds[1];  // RGB LED buffer for original M5Stack hardware
   static unsigned long lastUpdate;
   static int blinkPhase;
   static bool blinkState;

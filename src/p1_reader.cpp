@@ -1,5 +1,6 @@
 #include "config.h"  // ENABLE_P1_READER - must be set before p1_reader.h
 #include "p1_reader.h"
+#include "p1_power_value.h"
 #include "p1_dispatch.h"
 #include "serial_console.h"
 #include "dlms_decrypt.h"
@@ -9,12 +10,17 @@
 #include <nvs.h>
 
 // Plan-d-io P1-dongle hardware uses Serial1 on GPIO 21/22
-#define P1_UART_NUM      1
-#define P1_RX_PIN        21
-#define P1_TX_PIN        22
-#define P1_TRIGGER_PIN   25
+#ifdef HW_SOLISECO_C3
+  #define P1_RX_PIN        4
+  #define P1_TX_PIN       -1
+#else
+  #define P1_RX_PIN        21
+  #define P1_TX_PIN        22
+  #define P1_TRIGGER_PIN   25
+#endif
+
 #define P1_BAUD_RATE     115200
-#define P1_BUFFER_SIZE   2048   // telegram buffer (task stack)
+#define P1_BUFFER_SIZE   2048
 
 // Feature flag is defined in p1_reader.h
 
@@ -24,6 +30,7 @@ String P1Reader::lastRawTelegram = "";
 unsigned long P1Reader::telegramCount = 0;
 RawDebugCheckCallback P1Reader::rawDebugCallback = nullptr;
 static bool p1SerialInitDone = false;
+static unsigned long lastValidTelegramTime = 0;
 
 static float extractFloatValue(const String& line) {
   int startIdx = line.indexOf('(');
@@ -69,12 +76,12 @@ static int extractIntValue(const String& line) {
 static uint16_t calculateCRC16(const char* data, size_t len) {
   uint16_t crc = 0;
   for (size_t i = 0; i < len; i++) {
-    crc ^= (uint16_t)data[i] << 8;
+    crc ^= static_cast<uint8_t>(data[i]);
     for (int j = 0; j < 8; j++) {
-      if (crc & 0x8000) {
-        crc = (crc << 1) ^ 0x1021;
+      if (crc & 1) {
+        crc = (crc >> 1) ^ 0xA001;
       } else {
-        crc <<= 1;
+        crc >>= 1;
       }
     }
   }
@@ -112,6 +119,14 @@ static bool validateCRC(const String& telegram) {
     receivedCRC = (receivedCRC << 4) | nibble;
   }
 
+  // Reject unexpected data after CRC, except CR/LF line endings.
+  for (int i = crcIdx + 5; i < (int)telegram.length(); i++) {
+    char c = telegram.charAt(i);
+    if (c != '\r' && c != '\n') {
+      return false;
+    }
+  }
+
   // Calculate CRC for telegram up to '!' (excluding CRC itself)
   String telegramWithoutCRC = telegram.substring(0, crcIdx + 1);
   uint16_t calculatedCRC = calculateCRC16(telegramWithoutCRC.c_str(), telegramWithoutCRC.length());
@@ -129,10 +144,10 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
     return data;
   }
 
-  // Validate CRC checksum (log warning but don't fail - some meters have different CRC implementations)
+  // DSMR CRC: polynomial 0xA001, reflected, initial value zero.
   if (!validateCRC(telegram)) {
-    SerialConsole::println("Warning: CRC checksum mismatch - accepting telegram anyway");
-    // Continue parsing even if CRC fails - some Belgian meters use different CRC methods
+    SerialConsole::println("Invalid telegram: CRC checksum mismatch");
+    return data;
   }
 
   // Handle both \r\n and \n line endings
@@ -221,11 +236,11 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
       SerialConsole::println("  -> Production T5: " + String(data.productionT5));
     }
     else if (line.indexOf("1-0:1.7.0(") != -1) {
-      data.powerConsumed = extractFloatValue(line);
+      data.hasPowerConsumed = parseP1PowerValue(line.c_str(), "1-0:1.7.0(", data.powerConsumed);
       SerialConsole::println("  -> Power Consumed: " + String(data.powerConsumed));
     }
     else if (line.indexOf("1-0:2.7.0(") != -1) {
-      data.powerProduced = extractFloatValue(line);
+      data.hasPowerProduced = parseP1PowerValue(line.c_str(), "1-0:2.7.0(", data.powerProduced);
       SerialConsole::println("  -> Power Produced: " + String(data.powerProduced));
     }
     else if (line.indexOf("1-0:1.4.0(") != -1) {
@@ -254,15 +269,15 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
     }
     // Voltage readings (3 phases)
     else if (line.indexOf("1-0:32.7.0(") != -1) {
-      data.voltageL1 = extractFloatValue(line);
+      data.hasVoltageL1 = parseP1UnsignedValue(line.c_str(), "1-0:32.7.0(", "*V)", data.voltageL1);
       SerialConsole::println("  -> Voltage L1: " + String(data.voltageL1) + " V");
     }
     else if (line.indexOf("1-0:52.7.0(") != -1) {
-      data.voltageL2 = extractFloatValue(line);
+      data.hasVoltageL2 = parseP1UnsignedValue(line.c_str(), "1-0:52.7.0(", "*V)", data.voltageL2);
       SerialConsole::println("  -> Voltage L2: " + String(data.voltageL2) + " V");
     }
     else if (line.indexOf("1-0:72.7.0(") != -1) {
-      data.voltageL3 = extractFloatValue(line);
+      data.hasVoltageL3 = parseP1UnsignedValue(line.c_str(), "1-0:72.7.0(", "*V)", data.voltageL3);
       SerialConsole::println("  -> Voltage L3: " + String(data.voltageL3) + " V");
     }
     // Current readings (3 phases)
@@ -277,15 +292,6 @@ P1Data P1Reader::parseTelegram(const String& telegram) {
     else if (line.indexOf("1-0:71.7.0(") != -1) {
       data.currentL3 = extractFloatValue(line);
       SerialConsole::println("  -> Current L3: " + String(data.currentL3) + " A");
-    }
-    // Total power
-    else if (line.indexOf("1-0:1.7.0(") != -1) {
-      data.powerConsumed = extractFloatValue(line);
-      SerialConsole::println("  -> Total Import: " + String(data.powerConsumed) + " kW");
-    }
-    else if (line.indexOf("1-0:2.7.0(") != -1) {
-      data.powerProduced = extractFloatValue(line);
-      SerialConsole::println("  -> Total Export: " + String(data.powerProduced) + " kW");
     }
     // Power readings (3 phases) - ISk5/Fluvius specific
     else if (line.indexOf("1-0:61.7.0(") != -1) {
@@ -454,6 +460,16 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
   const unsigned long TELEGRAM_TIMEOUT = 5000;  // 5 second timeout
 
   while (true) {
+    // Connection status depends on VALID telegrams, not arbitrary UART bytes.
+    // Unsigned subtraction handles millis() rollover.
+    if (meterConnected && lastValidTelegramTime > 0) {
+      unsigned long elapsed = millis() - lastValidTelegramTime;
+      if (elapsed > (TELEGRAM_TIMEOUT * 2)) {
+        meterConnected = false;
+        SerialConsole::println("Meter disconnected: no valid telegram for " + String(elapsed) + "ms");
+      }
+    }
+
     // Feed watchdog frequently but check serial more aggressively
     yield();
 
@@ -557,6 +573,8 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
               P1Data data = parseTelegram(decryptedTelegram);
 
               if (data.valid) {
+                lastValidTelegramTime = millis();
+                meterConnected = true;
                 SerialConsole::println("[DLMS] ✅ Successfully parsed decrypted telegram!");
                 // Publish both: raw hex via snifferData + parsed data via onP1DataReceived
                 P1Data snifferData;
@@ -592,7 +610,7 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
         // Reset state
         receiving = false;
         telegramLen = 0;
-        meterConnected = true;
+
       }
 
       // Small delay before next sniff
@@ -653,10 +671,8 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
         if (decryptionKey.length() == 0) {
           SerialConsole::println("[DLMS] Error: No decryption key configured. Use MQTT: {\"cmd\":\"set_key\",\"key\":\"...\"}");
         } else {
-          // Log key status (first 8 chars + length for debugging)
-          String keyPreview = decryptionKey.substring(0, 8) + "..." + " (length: " + String(decryptionKey.length()) + ")";
-          SerialConsole::println("[DLMS] Using decryption key: " + keyPreview);
-
+          // Log key status without exposing the decryption key
+          SerialConsole::println("[P1] DLMS decryption key configured");
           // Decrypt the frame
           static uint8_t plaintextBuffer[P1_BUFFER_SIZE];
           size_t plaintextLen = 0;
@@ -684,6 +700,8 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
             P1Data data = parseTelegram(decryptedTelegram);
 
             if (data.valid) {
+              lastValidTelegramTime = millis();
+              meterConnected = true;
               if (telegramCount % 10 == 0) {
                 SerialConsole::println("[DLMS] ✅ Telegram #" + String(telegramCount) + " decrypted and parsed successfully");
               }
@@ -696,7 +714,6 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
           }
         }
 
-        meterConnected = true;
         receiving = false;
         telegramLen = 0;
         continue;  // Skip normal processing
@@ -718,7 +735,7 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
         telegram[0] = '/';
         telegram[1] = '\0';
         telegramLen = 1;
-        meterConnected = true;
+
       }
       else if (receiving && telegramLen < P1_BUFFER_SIZE - 2) {
         telegram[telegramLen++] = c;
@@ -758,6 +775,8 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
             P1Data data = parseTelegram(telegramStr);
 
             if (data.valid) {
+              lastValidTelegramTime = millis();
+              meterConnected = true;
               // Only log every 10th telegram to reduce spam (update ~10 seconds)
               if (telegramCount % 10 == 0) {
                 SerialConsole::println("[P1] Telegram #" + String(telegramCount) + " received (" + String(telegramLen) + " bytes), data valid");
@@ -803,28 +822,24 @@ void P1Reader::p1ReaderTask(void* pvParameters) {
       }
     }
 
-    // Check if meter disconnected (no data for extended period)
-    if (!receiving && meterConnected && lastCharTime > 0) {
-      unsigned long now = millis();
-      unsigned long elapsed = (now >= lastCharTime) ? (now - lastCharTime) : (ULONG_MAX - lastCharTime + now);
 
-      if (elapsed > (TELEGRAM_TIMEOUT * 2)) {
-        // No data for 2x timeout period, consider meter disconnected
-        meterConnected = false;
-        SerialConsole::println("Meter appears disconnected (no data for " + String(elapsed) + "ms)");
-        lastCharTime = 0;
-      }
-    }
   }
 }
 
 void P1Reader::begin() {
   #if ENABLE_P1_READER
     // Setup trigger pin for continuous meter reading (HIGH = continuous mode)
-    pinMode(P1_TRIGGER_PIN, OUTPUT);
-    digitalWrite(P1_TRIGGER_PIN, HIGH);
-    SerialConsole::println("P1 trigger pin (GPIO 25) set to HIGH for continuous mode");
-    delay(100);  // Give meter time to wake up
+    #ifndef HW_SOLISECO_C3
+        // Original OpenWatt / M5Stack hardware
+        pinMode(P1_TRIGGER_PIN, OUTPUT);
+        digitalWrite(P1_TRIGGER_PIN, HIGH);
+        SerialConsole::println("P1 trigger pin set to HIGH for continuous mode");
+        delay(100);
+    #else
+        // SolisEco ESP32-C3 V1:
+        // P1 Request is permanently enabled by hardware
+        SerialConsole::println("P1 trigger permanently enabled by hardware");
+    #endif
 
     // Deferred init: task does Serial1.setRxBufferSize/begin() after 4s to avoid WDT in setup()
     SerialConsole::println("Creating P1 reader task (Serial1 init deferred)...");
@@ -849,18 +864,31 @@ void P1Reader::begin() {
 
 void P1Reader::loop() {
   #if ENABLE_P1_READER
-    if (p1SerialInitDone) return;
-    static unsigned long lastCheck = 0;
-    if (lastCheck == 0) lastCheck = millis();
-    if (millis() - lastCheck < 5000) return;
-    lastCheck = millis();
-    SerialConsole::println("[P1] Serial1 init from main loop (GPIO 21/22, 115200)...");
-    // Initialize Serial1 with larger RX buffer to prevent overflow at 115200 baud
-    Serial1.setRxBufferSize(1024);  // Increase from default 256 to 1024 bytes
-    Serial1.begin(P1_BAUD_RATE, SERIAL_8N1, P1_RX_PIN, P1_TX_PIN);
-    delay(100);
-    p1SerialInitDone = true;
-    SerialConsole::println("[P1] Serial1 ready.");
+
+    static unsigned long testTimer = 0;
+
+    if (!p1SerialInitDone) {
+      static unsigned long lastCheck = 0;
+
+      if (lastCheck == 0) lastCheck = millis();
+      if (millis() - lastCheck < 5000) return;
+
+      lastCheck = millis();
+
+      SerialConsole::println("[P1] Serial1 init...");
+
+      Serial1.setRxBufferSize(P1_BUFFER_SIZE);
+      Serial1.begin(P1_BAUD_RATE, SERIAL_8N1, P1_RX_PIN, P1_TX_PIN);
+
+      delay(100);
+
+      p1SerialInitDone = true;
+
+      SerialConsole::println("[P1] Serial1 ready.");
+
+      return;
+    }
+
   #endif
 }
 

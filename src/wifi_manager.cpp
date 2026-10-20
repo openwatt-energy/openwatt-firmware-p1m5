@@ -25,6 +25,9 @@ void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
   // Configure WiFi for maximum performance
   WiFi.setSleep(false);  // Disable light sleep for stable connection
   WiFi.setAutoReconnect(false);  // We handle reconnect ourselves
+
+  // Scan all WiFi channels and connect to the strongest AP
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
   WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);  // Connect to strongest signal
 
   // Load saved credentials
@@ -61,9 +64,10 @@ void WiFiManager::begin(Preferences& prefs, const String& deviceId) {
     connectStartTime = millis();
     SerialConsole::println("WiFi connection attempt started (non-blocking)");
   } else {
-    // No credentials - AP only
-    SerialConsole::println("No saved WiFi credentials, starting AP only...");
-    WiFi.mode(WIFI_AP);
+    // No credentials - keep STA enabled so the first configuration scan does
+    // not change radio mode and disconnect clients from the access point.
+    SerialConsole::println("No saved WiFi credentials, starting AP+STA mode...");
+    WiFi.mode(WIFI_AP_STA);
     WiFi.softAP(apSSID.c_str(), NULL);  // Open AP
 
     // Set static IP for AP

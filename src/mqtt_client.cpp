@@ -2,6 +2,7 @@
 #include "mqtt_auth.h"
 #include "serial_console.h"
 #include "debug_logger.h"
+#include "mqtt_certificates.h"
 
 #define DEFAULT_MQTT_PORT MQTT_BROKER_PORT
 
@@ -14,201 +15,319 @@ String MQTTClient::secretKey;
 bool MQTTClient::useSecure = true;
 MQTTMessageCallback MQTTClient::messageCallback = nullptr;
 
-void MQTTClient::begin(Preferences& prefs, const String& devId, const String& secKey) {
-  deviceId = devId;
-  secretKey = secKey;
 
-  // Force production MQTT settings and save to NVS
-  config.host = MQTT_BROKER_HOST;  // mqtt.example.com
-  config.port = MQTT_BROKER_PORT;  // 8883
-  config.topic = MQTT_DEFAULT_TOPIC;  // P1M5/
-  config.username = deviceId;  // Username is the P1 number (e.g., "P19D49B8")
-  config.useTLS = true;  // Always use TLS on port 8883
+// ==========================================
+// INITIALISATION MQTT
+// ==========================================
 
-  // Save forced settings to NVS for persistence
-  prefs.putString("mqtt_host", config.host);
-  prefs.putUShort("mqtt_port", config.port);
-  prefs.putString("mqtt_topic", config.topic);
-  prefs.putBool("mqtt_use_tls", config.useTLS);
-  prefs.putString("mqtt_username", config.username);
+void MQTTClient::begin(
+    Preferences& prefs,
+    const String& devId,
+    const String& secKey
+) {
+    deviceId = devId;
+    secretKey = secKey;
 
-  LOG_INFO(MODULE_MQTT, "MQTT settings saved to NVS:");
-  LOG_INFO(MODULE_MQTT, "  Host: %s", config.host.c_str());
-  LOG_INFO(MODULE_MQTT, "  Port: %d", config.port);
-  LOG_INFO(MODULE_MQTT, "  Topic: %s", config.topic.c_str());
+    // Configuration AWS IoT Core
+    config.host = MQTT_BROKER_HOST;
+    config.port = MQTT_BROKER_PORT;
+    config.topic = MQTT_DEFAULT_TOPIC;
+    config.username = deviceId;
+    config.useTLS = true;
 
-  // Determine if we should use TLS based on port
-  useSecure = (config.port == 8883) || config.useTLS;
+    // Sauvegarde dans NVS
+    prefs.putString("mqtt_host", config.host);
+    prefs.putUShort("mqtt_port", config.port);
+    prefs.putString("mqtt_topic", config.topic);
+    prefs.putBool("mqtt_use_tls", config.useTLS);
+    prefs.putString("mqtt_username", config.username);
 
-  // Initialize appropriate client
-  if (useSecure) {
-    // For TLS, skip certificate validation for now (can be added later)
-    wifiClientSecure.setInsecure();
-    client = new PubSubClient(wifiClientSecure);
-  } else {
-    client = new PubSubClient(wifiClientPlain);
-  }
-
-  if (config.host.length() > 0) {
-    client->setServer(config.host.c_str(), config.port);
-    // Increase buffer size to handle large JSON payloads (default is only 256 bytes)
-    client->setBufferSize(4096);
-    LOG_INFO(MODULE_MQTT, "MQTT configured:");
-    LOG_INFO(MODULE_MQTT, "  Host: %s:%d", config.host.c_str(), config.port);
+    LOG_INFO(MODULE_MQTT, "MQTT settings saved to NVS:");
+    LOG_INFO(MODULE_MQTT, "  Host: %s", config.host.c_str());
+    LOG_INFO(MODULE_MQTT, "  Port: %d", config.port);
     LOG_INFO(MODULE_MQTT, "  Topic: %s", config.topic.c_str());
-    LOG_INFO(MODULE_MQTT, "  TLS: %s", useSecure ? "Yes" : "No");
-    LOG_INFO(MODULE_MQTT, "  Buffer: 4096 bytes");
-  } else {
-    LOG_WARN(MODULE_MQTT, "MQTT not configured");
-  }
+
+    useSecure = true;
+
+    // Authentification TLS avec certificats X.509
+    wifiClientSecure.setCACert(AWS_ROOT_CA);
+    wifiClientSecure.setCertificate(AWS_DEVICE_CERT);
+    wifiClientSecure.setPrivateKey(AWS_PRIVATE_KEY);
+
+    client = new PubSubClient(wifiClientSecure);
+
+    if (config.host.length() > 0) {
+        client->setServer(config.host.c_str(), config.port);
+        client->setBufferSize(4096);
+
+        LOG_INFO(MODULE_MQTT, "MQTT configured:");
+        LOG_INFO(
+            MODULE_MQTT,
+            "  Host: %s:%d",
+            config.host.c_str(),
+            config.port
+        );
+        LOG_INFO(MODULE_MQTT, "  Topic: %s", config.topic.c_str());
+        LOG_INFO(MODULE_MQTT, "  TLS: Yes (X.509)");
+        LOG_INFO(MODULE_MQTT, "  Buffer: 4096 bytes");
+    } else {
+        LOG_WARN(MODULE_MQTT, "MQTT not configured");
+    }
 }
+
+
+// ==========================================
+// BOUCLE MQTT
+// ==========================================
 
 void MQTTClient::loop() {
-  if (client) {
-    client->loop();
-  }
+    if (client) {
+        client->loop();
+    }
 }
+
+
+// ==========================================
+// ANCIENNE AUTHENTIFICATION
+// Conservée pour compatibilité
+// mais non utilisée avec X.509
+// ==========================================
 
 String MQTTClient::generatePassword() {
-  if (secretKey.length() == 0) {
-    LOG_ERROR(MODULE_MQTT, "Secret key not set, cannot generate password");
-    return String("");
-  }
-  return MQTTAuth::generatePassword(deviceId, secretKey);
+    if (secretKey.length() == 0) {
+        LOG_ERROR(
+            MODULE_MQTT,
+            "Secret key not set, cannot generate password"
+        );
+        return String("");
+    }
+
+    return MQTTAuth::generatePassword(deviceId, secretKey);
 }
 
-void MQTTClient::setMessageCallback(MQTTMessageCallback callback) {
-  messageCallback = callback;
+
+// ==========================================
+// CALLBACK DES MESSAGES
+// ==========================================
+
+void MQTTClient::setMessageCallback(
+    MQTTMessageCallback callback
+) {
+    messageCallback = callback;
 }
 
-void MQTTClient::mqttCallback(char* topic, byte* payload, unsigned int length) {
-  String payloadStr;
-  payloadStr.reserve(length);
-  for (unsigned int i = 0; i < length; i++) {
-    payloadStr += (char)payload[i];
-  }
 
-  String topicStr = String(topic);
+void MQTTClient::mqttCallback(
+    char* topic,
+    byte* payload,
+    unsigned int length
+) {
+    String payloadStr;
+    payloadStr.reserve(length);
 
-  LOG_INFO(MODULE_MQTT, "Message received on topic: %s", topicStr.c_str());
+    for (unsigned int i = 0; i < length; i++) {
+        payloadStr += (char)payload[i];
+    }
 
-  if (messageCallback) {
-    messageCallback(topicStr, payloadStr);
-  }
+    String topicStr = String(topic);
+
+    LOG_INFO(
+        MODULE_MQTT,
+        "Message received on topic: %s",
+        topicStr.c_str()
+    );
+
+    if (messageCallback) {
+        messageCallback(topicStr, payloadStr);
+    }
 }
+
+
+// ==========================================
+// ABONNEMENT AUX COMMANDES
+// ==========================================
 
 void MQTTClient::subscribeToTopics() {
-  if (!client || !client->connected()) {
-    return;
-  }
+    if (!client || !client->connected()) {
+        return;
+    }
 
-  // Subscribe to command topic: <topic_prefix><device_id>/cmd
-  String cmdTopic = config.topic;
-  if (!cmdTopic.endsWith("/")) {
-    cmdTopic += "/";
-  }
-  cmdTopic += deviceId + "/cmd";
+    String cmdTopic = config.topic;
 
-  if (client->subscribe(cmdTopic.c_str())) {
-    LOG_INFO(MODULE_MQTT, "Subscribed to command topic: %s", cmdTopic.c_str());
-  } else {
-    LOG_ERROR(MODULE_MQTT, "Failed to subscribe to command topic: %s", cmdTopic.c_str());
-  }
+    if (!cmdTopic.endsWith("/")) {
+        cmdTopic += "/";
+    }
+
+    cmdTopic += deviceId + "/cmd";
+
+    if (client->subscribe(cmdTopic.c_str())) {
+        LOG_INFO(
+            MODULE_MQTT,
+            "Subscribed to command topic: %s",
+            cmdTopic.c_str()
+        );
+    } else {
+        LOG_ERROR(
+            MODULE_MQTT,
+            "Failed to subscribe to command topic: %s",
+            cmdTopic.c_str()
+        );
+    }
 }
+
+
+// ==========================================
+// RECONNEXION MQTT AVEC X.509
+// ==========================================
 
 void MQTTClient::reconnect() {
-  if (!client || !config.host.length() > 0) {
-    return;
-  }
-
-  // Rate limit reconnection attempts (max once every 10 seconds)
-  static unsigned long lastReconnectAttempt = 0;
-  unsigned long now = millis();
-  if (now - lastReconnectAttempt < 10000) {
-    return;
-  }
-  lastReconnectAttempt = now;
-
-  if (!client->connected()) {
-    LOG_INFO(MODULE_MQTT, "Attempting MQTT connection to %s:%d...", config.host.c_str(), config.port);
-
-    // Generate password
-    String password = generatePassword();
-    if (password.length() == 0) {
-      LOG_ERROR(MODULE_MQTT, "Failed to generate password");
-      return;
+    if (!client || config.host.length() == 0) {
+        return;
     }
 
-    // Connect with username (device ID) and password
-    String username = config.username.length() > 0 ? config.username : deviceId;
+    // Une tentative toutes les 10 secondes maximum
+    static unsigned long lastReconnectAttempt = 0;
+    unsigned long now = millis();
 
-    if (client->connect(deviceId.c_str(), username.c_str(), password.c_str())) {
-      LOG_INFO(MODULE_MQTT, "MQTT connected as %s", username.c_str());
-      client->setCallback(mqttCallback);
-      subscribeToTopics();
-    } else {
-      int state = client->state();
-      LOG_ERROR(MODULE_MQTT, "MQTT connection failed, state: %d", state);
+    if (now - lastReconnectAttempt < 10000) {
+        return;
     }
-  }
+
+    lastReconnectAttempt = now;
+
+    if (!client->connected()) {
+        LOG_INFO(
+            MODULE_MQTT,
+            "Attempting MQTT X.509 connection to %s:%d...",
+            config.host.c_str(),
+            config.port
+        );
+
+        // Authentification réalisée par WiFiClientSecure
+        // avec le certificat et la clé privée.
+        // Aucun username/password MQTT nécessaire.
+        if (client->connect(deviceId.c_str())) {
+            LOG_INFO(
+                MODULE_MQTT,
+                "MQTT connected as %s",
+                deviceId.c_str()
+            );
+
+            client->setCallback(mqttCallback);
+            subscribeToTopics();
+
+        } else {
+            int state = client->state();
+
+            LOG_ERROR(
+                MODULE_MQTT,
+                "MQTT connection failed, state: %d",
+                state
+            );
+        }
+    }
 }
+
+
+// ==========================================
+// ÉTAT DE LA CONNEXION
+// ==========================================
 
 bool MQTTClient::isConnected() {
-  return client && client->connected();
+    return client && client->connected();
 }
 
-void MQTTClient::publish(const String& topic, const String& payload) {
-  if (client && client->connected() && topic.length() > 0) {
-    // topic should be the full path including device ID (e.g., "P1834378/data/readings")
-    // config.topic is the base prefix (e.g., "P1M5/" or "P1M5")
-    String fullTopic;
-    if (config.topic.length() > 0) {
-      // Check if config.topic already ends with "/"
-      if (config.topic.endsWith("/")) {
-        fullTopic = config.topic + topic;
-      } else {
-        fullTopic = config.topic + "/" + topic;
-      }
-    } else {
-      fullTopic = topic;
+
+// ==========================================
+// PUBLICATION MQTT
+// Fonction conservée
+// ==========================================
+
+void MQTTClient::publish(
+    const String& topic,
+    const String& payload
+) {
+    if (client && client->connected() && topic.length() > 0) {
+
+        String fullTopic;
+
+        if (config.topic.length() > 0) {
+            if (config.topic.endsWith("/")) {
+                fullTopic = config.topic + topic;
+            } else {
+                fullTopic = config.topic + "/" + topic;
+            }
+        } else {
+            fullTopic = topic;
+        }
+
+        bool result = client->publish(
+            fullTopic.c_str(),
+            payload.c_str()
+        );
+
+        if (!result) {
+            LOG_WARN(
+                MODULE_MQTT,
+                "Failed to publish to %s",
+                fullTopic.c_str()
+            );
+        }
     }
-    bool result = client->publish(fullTopic.c_str(), payload.c_str());
-    if (!result) {
-      LOG_WARN(MODULE_MQTT, "Failed to publish to %s", fullTopic.c_str());
-    }
-  }
 }
+
+
+// ==========================================
+// LECTURE CONFIGURATION
+// ==========================================
 
 MQTTConfig MQTTClient::getConfig() {
-  return config;
+    return config;
 }
 
-void MQTTClient::setConfig(const MQTTConfig& newConfig) {
-  config = newConfig;
-  useSecure = (config.port == 8883) || config.useTLS;
 
-  // Reinitialize client if needed
-  if (client) {
-    delete client;
-    client = nullptr;
-  }
+// ==========================================
+// MODIFICATION CONFIGURATION
+// ==========================================
 
-  if (config.host.length() > 0) {
-    if (useSecure) {
-      wifiClientSecure.setInsecure();
-      client = new PubSubClient(wifiClientSecure);
-    } else {
-      client = new PubSubClient(wifiClientPlain);
+void MQTTClient::setConfig(
+    const MQTTConfig& newConfig
+) {
+    config = newConfig;
+    useSecure = true;
+
+    if (client) {
+        delete client;
+        client = nullptr;
     }
-    client->setServer(config.host.c_str(), config.port);
-    client->setBufferSize(4096);
-  }
+
+    if (config.host.length() > 0) {
+
+        // Reconfiguration TLS X.509
+        wifiClientSecure.setCACert(AWS_ROOT_CA);
+        wifiClientSecure.setCertificate(AWS_DEVICE_CERT);
+        wifiClientSecure.setPrivateKey(AWS_PRIVATE_KEY);
+
+        client = new PubSubClient(wifiClientSecure);
+
+        client->setServer(
+            config.host.c_str(),
+            config.port
+        );
+
+        client->setBufferSize(4096);
+    }
 }
+
+
+// ==========================================
+// SAUVEGARDE CONFIGURATION
+// ==========================================
 
 void MQTTClient::saveConfig(Preferences& prefs) {
-  prefs.putString("mqtt_host", config.host);
-  prefs.putUShort("mqtt_port", config.port);
-  prefs.putString("mqtt_topic", config.topic);
-  prefs.putString("mqtt_username", config.username);
-  prefs.putBool("mqtt_use_tls", config.useTLS);
+    prefs.putString("mqtt_host", config.host);
+    prefs.putUShort("mqtt_port", config.port);
+    prefs.putString("mqtt_topic", config.topic);
+    prefs.putString("mqtt_username", config.username);
+    prefs.putBool("mqtt_use_tls", config.useTLS);
 }

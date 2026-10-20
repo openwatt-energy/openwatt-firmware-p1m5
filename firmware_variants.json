@@ -8,8 +8,22 @@
       "enable_mqtt": true,
       "enable_ota": true,
       "enable_p1_reader": true,
+      "enable_linky_tic": false,
       "ui_theme": "switchgrid",
       "description": "Standard OpenWatt firmware with full features"
+    },
+    {
+      "name": "linky-france",
+      "fw_ext": "linky-fr",
+      "ssid_prefix": "OpenWatt-Linky",
+      "allow_mqtt_changes": true,
+      "enable_mqtt": true,
+      "enable_ota": true,
+      "enable_p1_reader": false,
+      "enable_linky_tic": true,
+      "linky_mode": "historique",
+      "ui_theme": "switchgrid",
+      "description": "OpenWatt firmware for French Linky meters using TIC"
     },
     {
       "name": "openwatt-locked",
@@ -19,6 +33,7 @@
       "enable_mqtt": true,
       "enable_ota": true,
       "enable_p1_reader": true,
+      "enable_linky_tic": false,
       "mqtt_host": "mqtt.example.com",
       "mqtt_port": 8883,
       "ui_theme": "default",
@@ -32,6 +47,7 @@
       "enable_mqtt": true,
       "enable_ota": true,
       "enable_p1_reader": true,
+      "enable_linky_tic": false,
       "ui_theme": "custom",
       "description": "Custom branded firmware"
     }

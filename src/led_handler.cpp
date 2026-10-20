@@ -1,7 +1,14 @@
 #include "led_handler.h"
 
 // M5Stack Atom has RGB LED on GPIO 27
-#define LED_PIN 27
+#ifdef HW_SOLISECO_C3
+  // SolisEco custom ESP32-C3 V1: simple LED
+  #define LED_PIN 10
+#else
+  // Original M5Stack Atom: SK6812 RGB LED
+  #define LED_PIN 27
+#endif
+
 #define NUM_LEDS 1
 
 // Static members
@@ -12,11 +19,16 @@ int LEDHandler::blinkPhase = 0;
 bool LEDHandler::blinkState = false;
 
 void LEDHandler::begin() {
-  // Initialize FastLED
+#ifdef HW_SOLISECO_C3
+  // Simple LED: GPIO10 -> 330 ohm -> LED -> GND
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+#else
+  // Original M5Stack RGB LED
   FastLED.addLeds<SK6812, LED_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(128);  // 50% brightness
+  FastLED.setBrightness(128);
+#endif
 
-  // Start with booting state (red)
   setBooting();
 }
 
@@ -29,7 +41,9 @@ void LEDHandler::loop() {
     lastUpdate = now;
   }
 
+  #ifndef HW_SOLISECO_C3
   FastLED.show();
+  #endif
 }
 
 void LEDHandler::setBooting() {
@@ -79,8 +93,14 @@ void LEDHandler::setWiFiStatus(bool connected, bool meterConnected, bool cloudCo
 }
 
 void LEDHandler::setColor(CRGB color) {
+#ifdef HW_SOLISECO_C3
+  // Simple LED: any color means ON, COLOR_OFF means OFF
+  bool ledOn = (color.r != 0 || color.g != 0 || color.b != 0);
+  digitalWrite(LED_PIN, ledOn ? HIGH : LOW);
+#else
   leds[0] = color;
   FastLED.show();
+#endif
 }
 
 void LEDHandler::setStatus(LEDStatus status) {
@@ -151,24 +171,24 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
 
   switch (pattern) {
     case BlinkPattern::SOLID:
-      leds[0] = color;
+      setColor(color);
       break;
 
     case BlinkPattern::SLOW:
       // ~1Hz (500ms on, 500ms off)
       if ((now / 500) % 2 == 0) {
-        leds[0] = color;
+        setColor(color);
       } else {
-        leds[0] = COLOR_OFF;
+        setColor(COLOR_OFF);
       }
       break;
 
     case BlinkPattern::FAST:
       // ~5Hz (100ms on, 100ms off)
       if ((now / 100) % 2 == 0) {
-        leds[0] = color;
+        setColor(color);
       } else {
-        leds[0] = COLOR_OFF;
+        setColor(COLOR_OFF);
       }
       break;
 
@@ -177,9 +197,9 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
       {
         unsigned long cycle = now % 1500;  // 1.5 second cycle
         if (cycle < 200 || (cycle > 400 && cycle < 600)) {
-          leds[0] = color;
+          setColor(color);
         } else {
-          leds[0] = COLOR_OFF;
+          setColor(COLOR_OFF);
         }
       }
       break;
@@ -189,9 +209,9 @@ void LEDHandler::applyPattern(CRGB color, BlinkPattern pattern) {
       {
         unsigned long cycle = now % 2000;  // 2 second cycle
         if (cycle < 200 || (cycle > 400 && cycle < 600) || (cycle > 800 && cycle < 1000)) {
-          leds[0] = color;
+          setColor(color);
         } else {
-          leds[0] = COLOR_OFF;
+          setColor(COLOR_OFF);
         }
       }
       break;

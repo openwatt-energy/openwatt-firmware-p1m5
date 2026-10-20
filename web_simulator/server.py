@@ -137,7 +137,7 @@ class EmulatorHandler(SimpleHTTPRequestHandler):
         if path in template_map:
             filepath = DATA_DIR / template_map[path]
             if os.path.exists(filepath):
-                with open(filepath, 'r') as f:
+                with open(filepath, 'r', encoding='utf-8') as f:
                     content = f.read()
 
                 processed_content = build_templates.process_template(content, MQTT_ENABLED)
@@ -149,24 +149,12 @@ class EmulatorHandler(SimpleHTTPRequestHandler):
                 processed_content = processed_content.replace('{{SYSTEM_JS}}', '// Mock System JS')
 
                 self.send_response(200)
-                self.send_header('Content-type', 'text/html')
+                self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(processed_content.encode('utf-8'))
                 return
 
         return super().do_GET()
-
-    def do_PATCH(self):
-        parsed_path = urllib.parse.urlparse(self.path)
-        if parsed_path.path == '/api/config/fingerprint':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(
-                json.dumps({"status": "success", "message": "Key updated"}).encode('utf-8')
-            )
-            return
-        self.send_error(404, "Not Found")
 
 
 async def mock_ws_handler(websocket):
@@ -174,11 +162,11 @@ async def mock_ws_handler(websocket):
     try:
         while True:
             await websocket.send(json.dumps(LIVE_DATA))
-            LIVE_DATA["1-0:1.7.0"] = max(
-                0, LIVE_DATA["1-0:1.7.0"] + (id(websocket) % 3 - 1) * 0.05
+            LIVE_DATA["1-0:1.7.0"] = round(
+                max(0, LIVE_DATA["1-0:1.7.0"] + (id(websocket) % 3 - 1) * 0.05), 3
             )
-            LIVE_DATA["1-0:32.7.0"] = max(
-                220, min(240, LIVE_DATA["1-0:32.7.0"] + (id(websocket) % 3 - 1) * 0.2)
+            LIVE_DATA["1-0:32.7.0"] = round(
+                max(220, min(240, LIVE_DATA["1-0:32.7.0"] + (id(websocket) % 3 - 1) * 0.2)), 1
             )
             await asyncio.sleep(1)
     except websockets.exceptions.ConnectionClosed:
@@ -186,12 +174,12 @@ async def mock_ws_handler(websocket):
 
 
 def start_ws_server():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    start_server = websockets.serve(mock_ws_handler, "0.0.0.0", 8081)
-    loop.run_until_complete(start_server)
-    print("Starting WebSocket simulator on ws://localhost:8081")
-    loop.run_forever()
+    async def main():
+        async with websockets.serve(mock_ws_handler, "0.0.0.0", 8081):
+            print("Starting WebSocket simulator on ws://localhost:8081")
+            await asyncio.Future()
+
+    asyncio.run(main())
 
 
 if __name__ == '__main__':

@@ -19,6 +19,8 @@
 #include <Preferences.h>
 #include <MD5Builder.h>
 #include <nvs.h>
+#include "linky_tic_parser.h"
+
 
 // Include config first to define feature flags
 #include "config.h"
@@ -34,6 +36,12 @@
 #endif
 #if ENABLE_OTA
 #include "ota_update.h"
+#endif
+// Instance globale pour le Linky
+LinkyTicParser linkyParser;
+
+#if ENABLE_LINKY_TIC
+JsonDocument linkyLiveData;
 #endif
 
 // Forward declarations
@@ -63,6 +71,12 @@ P1Data latestData;
 // ============================================================================
 
 String getDeviceId() {
+
+#if defined(SOLISECO_STAGING_TEST) && SOLISECO_STAGING_TEST
+  // Identifiant réservé aux tests Soliseco STAGING
+  return String("P1TEST001");
+#else
+  // Identifiant normal généré depuis l'adresse MAC
   uint8_t mac[6];
   esp_efuse_mac_get_default(mac);
 
@@ -70,6 +84,7 @@ String getDeviceId() {
   sprintf(deviceId, "P1%02X%02X%02X", mac[3], mac[4], mac[5]);
 
   return String(deviceId);
+#endif
 }
 
 String getDeviceName() {
@@ -88,6 +103,8 @@ String getDeviceName() {
 
 void publishToMQTT(const P1Data& data);
 void broadcastToWebSocket(const P1Data& data);
+void onP1DataReceived(const P1Data& data);
+
 
 // ============================================================================
 // MQTT PUBLISHING
@@ -270,7 +287,8 @@ void publishToMQTT(const P1Data& data) {
 
   // Voltage L1
   JsonObject t32_7_0 = doc["1-0:32.7.0"].to<JsonObject>();
-  t32_7_0["value"] = data.voltageL1;
+  if (data.hasVoltageL1) t32_7_0["value"] = data.voltageL1;
+  else t32_7_0["value"] = nullptr;
   t32_7_0["unit"] = "V";
 
   // Power import L2
@@ -290,7 +308,8 @@ void publishToMQTT(const P1Data& data) {
 
   // Voltage L2
   JsonObject t52_7_0 = doc["1-0:52.7.0"].to<JsonObject>();
-  t52_7_0["value"] = data.voltageL2;
+  if (data.hasVoltageL2) t52_7_0["value"] = data.voltageL2;
+  else t52_7_0["value"] = nullptr;
   t52_7_0["unit"] = "V";
 
   // Power import L3
@@ -310,11 +329,72 @@ void publishToMQTT(const P1Data& data) {
 
   // Voltage L3
   JsonObject t72_7_0 = doc["1-0:72.7.0"].to<JsonObject>();
-  t72_7_0["value"] = data.voltageL3;
+  if (data.hasVoltageL3) t72_7_0["value"] = data.voltageL3;
+  else t72_7_0["value"] = nullptr;
   t72_7_0["unit"] = "V";
 
   // Meter version
   doc["1-0:94.32.1"] = data.meterVersion;
+
+    // ============================================================
+  // LINKY FRANCE - Mesures supplementaires MQTT
+  // ============================================================
+
+#if ENABLE_LINKY_TIC
+
+  // Energie totale soutiree (kWh)
+  if (data.hasConsumptionTotal) {
+    JsonObject energyTotal = doc["1-0:1.8.0"].to<JsonObject>();
+    energyTotal["value"] = data.consumptionTotalKWh;
+    energyTotal["unit"] = "kWh";
+  }
+
+  // Energie totale injectee (kWh)
+  if (data.hasProductionTotal) {
+    JsonObject productionTotal = doc["1-0:2.8.0"].to<JsonObject>();
+    productionTotal["value"] = data.productionTotalKWh;
+    productionTotal["unit"] = "kWh";
+  }
+
+  // Tarif Base
+  if (data.hasConsumptionBase) {
+    doc["linky_base_kwh"] = data.consumptionBaseKWh;
+  }
+
+  // Heures creuses
+  if (data.hasConsumptionHC) {
+    doc["linky_hc_kwh"] = data.consumptionHCKWh;
+  }
+
+  // Heures pleines
+  if (data.hasConsumptionHP) {
+    doc["linky_hp_kwh"] = data.consumptionHPKWh;
+  }
+
+  // Index tarifaires du mode standard
+  if (data.hasTariffIndex1) {
+    doc["linky_easf01_kwh"] = data.tariffIndex1KWh;
+  }
+
+  if (data.hasTariffIndex2) {
+    doc["linky_easf02_kwh"] = data.tariffIndex2KWh;
+  }
+
+  // Puissance apparente soutiree (kVA)
+  if (data.apparentPowerImport >= 0.0f) {
+    JsonObject apparentImport = doc["1-0:9.7.0"].to<JsonObject>();
+    apparentImport["value"] = data.apparentPowerImport;
+    apparentImport["unit"] = "kVA";
+  }
+
+  // Puissance apparente injectee (kVA)
+  if (data.apparentPowerExport >= 0.0f) {
+    JsonObject apparentExport = doc["1-0:10.7.0"].to<JsonObject>();
+    apparentExport["value"] = data.apparentPowerExport;
+    apparentExport["unit"] = "kVA";
+  }
+
+#endif
 
   // Metadata
   doc["id"] = generateUUID();
@@ -337,7 +417,7 @@ void publishMQTTStatus() {
   }
 
   // Get or initialize reboot count from NVS
-  static int rebootCount = 0;
+  static int32_t rebootCount = 0;
   static bool rebootCountLoaded = false;
   if (!rebootCountLoaded) {
     rebootCountLoaded = true;
@@ -526,78 +606,234 @@ void handleMQTTCommand(const String& topic, const String& payload) {
       nvs_close(h);
     }
   }
-  else if (cmd == "nvs_dump") {
-    SerialConsole::println("[MQTT] NVS dump requested");
-    JsonDocument nvsDoc;
-    nvsDoc["device_id"] = state.deviceId;
-    nvsDoc["wifi_ssid"] = preferences.getString("wifi_ssid", "");
-    nvsDoc["wifi_password_length"] = preferences.getString("wifi_password", "").length();
-
-    nvs_handle_t h;
-    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
-      int rebootCount = 0;
-      if (nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, &rebootCount) == ESP_OK) {
-        nvsDoc["reboot_count"] = rebootCount;
-      }
-
-      size_t len = 0;
-      if (nvs_get_str(h, NVS_KEY_FINGERPRINT, NULL, &len) == ESP_OK && len > 0) {
-        char buf[len];
-        nvs_get_str(h, NVS_KEY_FINGERPRINT, buf, &len);
-        nvsDoc["fingerprint"] = String(buf);
-      }
-
-      len = 0;
-      if (nvs_get_str(h, NVS_KEY_CREOS_KEY, NULL, &len) == ESP_OK && len > 0) {
-        char buf[len];
-        nvs_get_str(h, NVS_KEY_CREOS_KEY, buf, &len);
-        nvsDoc["creos_key"] = String(buf);
-      }
-
-      len = 0;
-      if (nvs_get_str(h, "email", NULL, &len) == ESP_OK && len > 0) {
-        char buf[len];
-        nvs_get_str(h, "email", buf, &len);
-        nvsDoc["email"] = String(buf);
-      }
-      nvs_close(h);
-    }
-
-    MQTTConfig mqttCfg = MQTTClient::getConfig();
-    nvsDoc["mqtt_host"] = mqttCfg.host;
-    nvsDoc["mqtt_topic"] = mqttCfg.topic;
-
-    String jsonOutput;
-    serializeJson(nvsDoc, jsonOutput);
-    String topicResp = state.deviceId + "/nvs_dump";
-    MQTTClient::publish(topicResp, jsonOutput);
-    SerialConsole::println("[MQTT] Published NVS dump to " + topicResp);
-  }
   else {
     SerialConsole::println("[MQTT] Unknown command: " + cmd);
   }
 }
 #endif
 
+#if ENABLE_LINKY_TIC
+
+void processLinkyData() {
+
+    P1Data data;
+    bool hasData = false;
+
+    // Identification du compteur
+    if (!linkyLiveData["0-0:96.1.1"].isNull()) {
+        data.equipmentId =
+            linkyLiveData["0-0:96.1.1"].as<String>();
+        hasData = true;
+    }
+
+    // Horodatage
+    if (!linkyLiveData["0-0:1.0.0"].isNull()) {
+        data.timestamp =
+            linkyLiveData["0-0:1.0.0"].as<String>();
+        hasData = true;
+    }
+
+    // Consommation totale (kWh)
+    if (!linkyLiveData["1-0:1.8.0"].isNull()) {
+        data.consumptionTotalKWh =
+            linkyLiveData["1-0:1.8.0"].as<float>();
+
+        data.hasConsumptionTotal = true;
+        hasData = true;
+    }
+
+    // Production totale (kWh)
+    if (!linkyLiveData["1-0:2.8.0"].isNull()) {
+        data.productionTotalKWh =
+            linkyLiveData["1-0:2.8.0"].as<float>();
+
+        data.hasProductionTotal = true;
+        hasData = true;
+    }
+
+    // Index Base
+    if (!linkyLiveData["linky_base_kwh"].isNull()) {
+        data.consumptionBaseKWh =
+            linkyLiveData["linky_base_kwh"].as<float>();
+
+        data.hasConsumptionBase = true;
+        hasData = true;
+    }
+
+    // Heures creuses
+    if (!linkyLiveData["linky_hc_kwh"].isNull()) {
+        data.consumptionHCKWh =
+            linkyLiveData["linky_hc_kwh"].as<float>();
+
+        data.hasConsumptionHC = true;
+        hasData = true;
+    }
+
+    // Heures pleines
+    if (!linkyLiveData["linky_hp_kwh"].isNull()) {
+        data.consumptionHPKWh =
+            linkyLiveData["linky_hp_kwh"].as<float>();
+
+        data.hasConsumptionHP = true;
+        hasData = true;
+    }
+
+    // Index tarifaire standard 1
+    if (!linkyLiveData["linky_easf01_kwh"].isNull()) {
+        data.tariffIndex1KWh =
+            linkyLiveData["linky_easf01_kwh"].as<float>();
+
+        data.hasTariffIndex1 = true;
+        hasData = true;
+    }
+
+    // Index tarifaire standard 2
+    if (!linkyLiveData["linky_easf02_kwh"].isNull()) {
+        data.tariffIndex2KWh =
+            linkyLiveData["linky_easf02_kwh"].as<float>();
+
+        data.hasTariffIndex2 = true;
+        hasData = true;
+    }
+
+    // Puissance active soutirée (kW)
+    if (!linkyLiveData["1-0:1.7.0"].isNull()) {
+        data.powerConsumed =
+            linkyLiveData["1-0:1.7.0"].as<float>();
+
+        data.hasPowerConsumed = true;
+        hasData = true;
+    }
+
+    // Puissance active injectée (kW)
+    if (!linkyLiveData["1-0:2.7.0"].isNull()) {
+        data.powerProduced =
+            linkyLiveData["1-0:2.7.0"].as<float>();
+
+        data.hasPowerProduced = true;
+        hasData = true;
+    }
+
+    // Puissance apparente soutirée (kVA)
+    if (!linkyLiveData["1-0:9.7.0"].isNull()) {
+        data.apparentPowerImport =
+            linkyLiveData["1-0:9.7.0"].as<float>();
+
+        hasData = true;
+    }
+
+    // Puissance apparente injectée (kVA)
+    if (!linkyLiveData["linky_apparent_power_injected_kva"].isNull()) {
+        data.apparentPowerExport =
+            linkyLiveData["linky_apparent_power_injected_kva"].as<float>();
+
+        hasData = true;
+    }
+
+    // Courant (A)
+    if (!linkyLiveData["1-0:31.7.0"].isNull()) {
+        data.currentL1 =
+            linkyLiveData["1-0:31.7.0"].as<float>();
+
+        hasData = true;
+    }
+
+    // Tension (V)
+    if (!linkyLiveData["1-0:32.7.0"].isNull()) {
+        data.voltageL1 =
+            linkyLiveData["1-0:32.7.0"].as<float>();
+
+        data.hasVoltageL1 = true;
+        hasData = true;
+    }
+
+    if (!hasData) {
+        return;
+    }
+
+    data.valid = true;
+
+    // Réutiliser le pipeline OpenWatt existant.
+    onP1DataReceived(data);
+}
+
+#endif
 // Called from P1 reader task when a valid telegram received.
 void onP1DataReceived(const P1Data& data) {
-  #if ENABLE_MQTT
+  #if ENABLE_MQTT && ENABLE_P1_READER
   if (rawDebugState.enabled) {
     rawDebugState.pendingRawTelegram = P1Reader::getLastRawTelegram();
   }
   #endif
+  // Raw debug callbacks must not overwrite accepted measurements.
+  if (!data.valid) return;
 
   // Merge data - only update fields that have values in the new telegram
   // This handles meters that send different telegram types (energy vs voltage/current)
   if (data.equipmentId.length() > 0) latestData.equipmentId = data.equipmentId;
   if (data.timestamp.length() > 0) latestData.timestamp = data.timestamp;
   if (data.tariffIndicator > 0) latestData.tariffIndicator = data.tariffIndicator;
+  // ============================================================
+    // ============================================================
+  // LINKY FRANCE - Conservation des mesures
+  // ============================================================
+
+  // Consommation totale (kWh)
+  if (data.hasConsumptionTotal) {
+    latestData.consumptionTotalKWh = data.consumptionTotalKWh;
+    latestData.hasConsumptionTotal = true;
+  }
+
+  // Production totale (kWh)
+  if (data.hasProductionTotal) {
+    latestData.productionTotalKWh = data.productionTotalKWh;
+    latestData.hasProductionTotal = true;
+  }
+
+  // Tarif Base (kWh)
+  if (data.hasConsumptionBase) {
+    latestData.consumptionBaseKWh = data.consumptionBaseKWh;
+    latestData.hasConsumptionBase = true;
+  }
+
+  // Heures creuses (kWh)
+  if (data.hasConsumptionHC) {
+    latestData.consumptionHCKWh = data.consumptionHCKWh;
+    latestData.hasConsumptionHC = true;
+  }
+
+  // Heures pleines (kWh)
+  if (data.hasConsumptionHP) {
+    latestData.consumptionHPKWh = data.consumptionHPKWh;
+    latestData.hasConsumptionHP = true;
+  }
+
+  // Index tarifaire standard 1 (kWh)
+  if (data.hasTariffIndex1) {
+    latestData.tariffIndex1KWh = data.tariffIndex1KWh;
+    latestData.hasTariffIndex1 = true;
+  }
+
+  // Index tarifaire standard 2 (kWh)
+  if (data.hasTariffIndex2) {
+    latestData.tariffIndex2KWh = data.tariffIndex2KWh;
+    latestData.hasTariffIndex2 = true;
+  }
+
+  // Puissance apparente soutirée (kVA)
+  if (data.apparentPowerImport >= 0.0f) {
+    latestData.apparentPowerImport = data.apparentPowerImport;
+  }
+
+  // Puissance apparente injectée (kVA)
+  if (data.apparentPowerExport >= 0.0f) {
+    latestData.apparentPowerExport = data.apparentPowerExport;
+  }
   if (data.consumptionT1 > 0) latestData.consumptionT1 = data.consumptionT1;
   if (data.consumptionT2 > 0) latestData.consumptionT2 = data.consumptionT2;
   if (data.productionT1 > 0) latestData.productionT1 = data.productionT1;
   if (data.productionT2 > 0) latestData.productionT2 = data.productionT2;
-  if (data.powerConsumed > 0) latestData.powerConsumed = data.powerConsumed;
-  if (data.powerProduced > 0) latestData.powerProduced = data.powerProduced;
+  latestData.mergeActivePowerFrom(data);
   if (data.powerImportL1 >= 0) latestData.powerImportL1 = data.powerImportL1;
   if (data.powerImportL2 >= 0) latestData.powerImportL2 = data.powerImportL2;
   if (data.powerImportL3 >= 0) latestData.powerImportL3 = data.powerImportL3;
@@ -615,10 +851,7 @@ void onP1DataReceived(const P1Data& data) {
   if (data.secondId.length() > 0) latestData.secondId = data.secondId;
   if (data.textMessage.length() > 0) latestData.textMessage = data.textMessage;
 
-  // Voltage (accept 0 values as they are valid readings)
-  if (data.voltageL1 >= 0) latestData.voltageL1 = data.voltageL1;
-  if (data.voltageL2 >= 0) latestData.voltageL2 = data.voltageL2;
-  if (data.voltageL3 >= 0) latestData.voltageL3 = data.voltageL3;
+  latestData.updateVoltagesFrom(data);
 
   // Current (accept 0 values as they are valid readings)
   if (data.currentL1 >= 0) latestData.currentL1 = data.currentL1;
@@ -677,9 +910,12 @@ void broadcastToWebSocket(const P1Data& data) {
   doc["0-0:98.1.0"] = data.maxDemand13M;
 
   // Voltage (V) - 3 phases
-  doc["1-0:32.7.0"] = data.voltageL1;
-  doc["1-0:52.7.0"] = data.voltageL2;
-  doc["1-0:72.7.0"] = data.voltageL3;
+  if (data.hasVoltageL1) doc["1-0:32.7.0"] = data.voltageL1;
+  else doc["1-0:32.7.0"] = nullptr;
+  if (data.hasVoltageL2) doc["1-0:52.7.0"] = data.voltageL2;
+  else doc["1-0:52.7.0"] = nullptr;
+  if (data.hasVoltageL3) doc["1-0:72.7.0"] = data.voltageL3;
+  else doc["1-0:72.7.0"] = nullptr;
 
   // Current (A) - 3 phases
   doc["1-0:31.7.0"] = data.currentL1;
@@ -688,6 +924,56 @@ void broadcastToWebSocket(const P1Data& data) {
 
   // Switch position
   doc["0-0:96.3.10"] = data.switchPosition;
+    // ============================================================
+  // LINKY FRANCE - Mesures WebSocket
+  // ============================================================
+
+#if ENABLE_LINKY_TIC
+
+  // Consommation et production totales (kWh)
+  if (data.hasConsumptionTotal) {
+    doc["1-0:1.8.0"] = data.consumptionTotalKWh;
+  }
+
+  if (data.hasProductionTotal) {
+    doc["1-0:2.8.0"] = data.productionTotalKWh;
+  }
+
+  // Tarif Base
+  if (data.hasConsumptionBase) {
+    doc["linky_base_kwh"] = data.consumptionBaseKWh;
+  }
+
+  // Heures creuses
+  if (data.hasConsumptionHC) {
+    doc["linky_hc_kwh"] = data.consumptionHCKWh;
+  }
+
+  // Heures pleines
+  if (data.hasConsumptionHP) {
+    doc["linky_hp_kwh"] = data.consumptionHPKWh;
+  }
+
+  // Index tarifaires standard
+  if (data.hasTariffIndex1) {
+    doc["linky_easf01_kwh"] = data.tariffIndex1KWh;
+  }
+
+  if (data.hasTariffIndex2) {
+    doc["linky_easf02_kwh"] = data.tariffIndex2KWh;
+  }
+
+  // Puissance apparente soutiree (kVA)
+  if (data.apparentPowerImport >= 0.0f) {
+    doc["1-0:9.7.0"] = data.apparentPowerImport;
+  }
+
+  // Puissance apparente injectee (kVA)
+  if (data.apparentPowerExport >= 0.0f) {
+    doc["1-0:10.7.0"] = data.apparentPowerExport;
+  }
+
+#endif
 
   String jsonString;
   serializeJson(doc, jsonString);
@@ -722,7 +1008,21 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 
 void setup() {
   // Initialize LED first (device powered)
-  LEDHandler::begin();
+ LEDHandler::begin();
+
+#if ENABLE_LINKY_TIC
+    #if LINKY_TIC_STANDARD
+        linkyParser.begin(
+            Serial1,
+            LINKY_MODE_STANDARD
+        );
+    #else
+        linkyParser.begin(
+            Serial1,
+            LINKY_MODE_HISTORIQUE
+        );
+    #endif
+#endif
 
   // Initialize Serial Console
   SerialConsole::begin();
@@ -765,7 +1065,7 @@ void setup() {
 
   nvs_handle_t h;
   if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
-    int rebootCount = 0;
+    int32_t rebootCount = 0;
     nvs_get_i32(h, NVS_KEY_REBOOT_COUNT, &rebootCount);
     SerialConsole::println("  Reboot Count: " + String(rebootCount));
 
@@ -782,7 +1082,7 @@ void setup() {
     if (nvs_get_str(h, NVS_KEY_CREOS_KEY, NULL, &len) == ESP_OK && len > 0) {
       char buf[len];
       nvs_get_str(h, NVS_KEY_CREOS_KEY, buf, &len);
-      SerialConsole::println("  Creos Key: '" + String(buf) + "'");
+      SerialConsole::println("  Creos Key: [CONFIGURED - HIDDEN]");
     } else {
       SerialConsole::println("  Creos Key: (empty/not set)");
     }
@@ -880,7 +1180,9 @@ void setup() {
   SerialConsole::println("Setting up P1 Reader...");
   SerialConsole::flush();
   yield();
-  P1Reader::begin();
+  #if ENABLE_P1_READER
+    P1Reader::begin();
+#endif
   yield();
   delay(100);
 
@@ -907,43 +1209,62 @@ void setup() {
 }
 
 void loop() {
-  yield();
-  ArduinoOTA.handle();
-  yield();
-  P1Reader::loop();  // Serial1 init after ~5s (avoids WDT in P1 task)
-  yield();
-  LEDHandler::loop();
-  yield();
+    yield();
 
-  // Maintain MQTT connection (if enabled)
-  #if ENABLE_MQTT
-  MQTTClient::reconnect();
-  MQTTClient::loop();
-  yield();
+    ArduinoOTA.handle();
+    yield();
 
-  if (rawDebugState.enabled && rawDebugState.pendingRawTelegram.length() > 0) {
-    publishRawTelegram(rawDebugState.pendingRawTelegram);
-    rawDebugState.pendingRawTelegram = "";
-  }
+    #if ENABLE_OTA
+    OTAUpdate::loop();
+    yield();
+#endif
 
-  checkRawDebugTimeout();
-  yield();
+   #if ENABLE_P1_READER
+    P1Reader::loop();
+   #endif
+   yield();
 
-  // Publish status periodically (firmware version, uptime, etc.)
-  static unsigned long lastStatusPublish = 0;
-  if (millis() - lastStatusPublish > MQTT_STATUS_INTERVAL_MS) {
-    lastStatusPublish = millis();
-    publishMQTTStatus();
-  }
-  yield();
-  #endif
+   #if ENABLE_LINKY_TIC
+    if (linkyParser.update(linkyLiveData)) {
+        processLinkyData();
+       }
+   #endif
 
-  // Handle OTA updates (if enabled)
-  #if ENABLE_OTA
-  OTAUpdate::loop();
-  yield();
-  #endif
+    yield();
 
+    LEDHandler::loop();
+    yield();
+
+    // Maintain MQTT connection (if enabled)
+    #if ENABLE_MQTT
+    MQTTClient::reconnect();
+    MQTTClient::loop();
+    yield();
+
+    if (rawDebugState.enabled &&
+        rawDebugState.pendingRawTelegram.length() > 0) {
+
+        publishRawTelegram(
+            rawDebugState.pendingRawTelegram
+        );
+
+        rawDebugState.pendingRawTelegram = "";
+    }
+
+    checkRawDebugTimeout();
+    yield();
+
+    static unsigned long lastStatusPublish = 0;
+
+    if (millis() - lastStatusPublish >
+        MQTT_STATUS_INTERVAL_MS) {
+
+        lastStatusPublish = millis();
+        publishMQTTStatus();
+    }
+
+    yield();
+    #endif
   // Cleanup WebSocket
   ws.cleanupClients();
   yield();
@@ -963,7 +1284,17 @@ void loop() {
 
       bool isAP = (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA);
       bool wifiConnected = WiFiManager::isConnected();
-      bool meterConnected = P1Reader::isConnected();
+      bool meterConnected = false;
+
+      #if ENABLE_P1_READER
+          meterConnected = P1Reader::isConnected();
+      #elif ENABLE_LINKY_TIC
+          meterConnected = linkyParser.isConnected();
+      #endif
+
+
+
+
 
       #if ENABLE_MQTT
       bool cloudConnected = MQTTClient::isConnected();

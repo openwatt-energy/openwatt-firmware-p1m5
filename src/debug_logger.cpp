@@ -26,12 +26,12 @@ bool DebugLogger::shouldLog(uint8_t level, const char* module) {
   if (level > currentLevel) {
     return false;
   }
-  
+
   // Check module filter
   if (moduleFilter.length() > 0 && moduleFilter != String(module)) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -40,13 +40,13 @@ void DebugLogger::printTimestamp() {
   unsigned long seconds = ms / 1000;
   unsigned long minutes = seconds / 60;
   unsigned long hours = minutes / 60;
-  
+
   seconds = seconds % 60;
   minutes = minutes % 60;
   hours = hours % 24;
-  
+
   char buffer[32];
-  snprintf(buffer, sizeof(buffer), "[%02lu:%02lu:%02lu.%03lu]", 
+  snprintf(buffer, sizeof(buffer), "[%02lu:%02lu:%02lu.%03lu]",
            hours, minutes, seconds, ms % 1000);
   Serial.print(buffer);
 }
@@ -55,20 +55,20 @@ void DebugLogger::log(uint8_t level, const char* module, const char* format, ...
   if (!shouldLog(level, module)) {
     return;
   }
-  
+
   printTimestamp();
   Serial.print(" [");
   Serial.print(levelNames[level]);
   Serial.print("] [");
   Serial.print(module);
   Serial.print("] ");
-  
+
   va_list args;
   va_start(args, format);
   char buffer[256];
   vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
-  
+
   Serial.println(buffer);
 }
 

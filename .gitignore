@@ -1,3 +1,5 @@
 .pio
+.vscode/
 customer_config.h
 *.bin
+src/mqtt_certificates.h
